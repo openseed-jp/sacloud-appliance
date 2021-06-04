@@ -5,6 +5,8 @@ cd $(dirname $0)/..
 
 set -x -e -o pipefail -o errexit
 
+usermod -aG mysql apache
+usermod -aG postgres apache
 usermod -aG $SACLOUD_ADMIN_USER apache
 cp -f /root/.ssh/id_rsa_admin /home/$SACLOUD_ADMIN_USER/.ssh/id_rsa
 cp -f /root/.ssh/id_rsa_admin.pub /home/$SACLOUD_ADMIN_USER/.ssh/id_rsa.pub
@@ -13,6 +15,12 @@ cat /home/$SACLOUD_ADMIN_USER/.ssh/id_rsa.pub >> /home/$SACLOUD_ADMIN_USER/.ssh/
 
 md5sum /home/$SACLOUD_ADMIN_USER/.ssh/id_rsa | passwd --stdin $SACLOUD_ADMIN_USER
 
+
+if [ ! -d $SACLOUDB_MODULE_BASE/html/sacloud-api/vendor ]; then
+    cd $SACLOUDB_MODULE_BASE/html/sacloud-api/
+    export COMPOSER_HOME=/root
+    COMPOSER_ALLOW_SUPERUSER=1 composer update
+fi
 cp -fr /root/.sacloud-api/sacloudb/html /home/$SACLOUD_ADMIN_USER/.
 cat <<_EOF > /home/$SACLOUD_ADMIN_USER/html/sacloud-api/.htaccess
 

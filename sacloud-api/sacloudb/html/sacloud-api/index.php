@@ -20,48 +20,56 @@ $app->group('/external-api', function (Group $api) {
     $api->get('/ping', function (Request $request, Response $response, $args) {
         list($payload, $status, $headers) = maxscale_status();
 
-        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $response->getBody()->write($json);
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        return json_response($response, 200, $payload);
     });
     $api->get('/check_vip_connection', function (Request $request, Response $response, $args) {
         list($payload, $status, $headers) = bbb();
 
-        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $response->getBody()->write($json);
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        return json_response($response, 200, $payload);
     });
 
 });
 
 $app->group('/sacloud-api', function (Group $api) {
-    $api->get('/status', function (Request $request, Response $response, $args) {
-        list($payload, $status, $headers) = status_setting_response();
+    $api->get('/download-log/{file}.log', function (Request $request, Response $response, $args) {
+        // TODO ログ取得
+        $payload = ["Log" => file_get_contents("/var/lib/mysql/error.log")];
 
-        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $response->getBody()->write($json);
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        return json_response($response, 200, $payload);
+    });
+    $api->put('/service-ctrl/restart', function (Request $request, Response $response, $args) {
+         list($payload, $status, $headers) = status_setting_response("MariaDB");
+        // TODO 再起動
+        $payload = ["Accepted" => true];
+
+        return json_response($response, 202, $payload);
+    });
+    $api->put('/config', function (Request $request, Response $response, $args) {
+        list($payload, $status, $headers) = status_setting_response("MariaDB");
+        // TODO 反映
+        $payload = ["Accepted" => true];
+
+        return json_response($response, 202, $payload);
+    });
+    $api->get('/status', function (Request $request, Response $response, $args) {
+        list($payload, $status, $headers) = status_setting_response("MariaDB");
+
+        return json_response($response, 200, $payload);
     });
     $api->get('/parameter', function (Request $request, Response $response, $args) {
         $payload = settings_response("Parameter");
 
-        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $response->getBody()->write($json);
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        return json_response($response, 200, $payload);
     });
     $api->get('/plugin', function (Request $request, Response $response, $args) {
         $payload = settings_response("Plugin");
 
-        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $response->getBody()->write($json);
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        return json_response($response, 200, $payload);
     });
     $api->get('/syslog', function (Request $request, Response $response, $args) {
         $payload = settings_response("Syslog");
 
-        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $response->getBody()->write($json);
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+        return json_response($response, 200, $payload);
     });
 });
 
@@ -74,8 +82,13 @@ try {
     print json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 }
 
+function json_response($response, $code, $payload) {
+    $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $response->getBody()->write($json);
+    return $response->withHeader('Content-Type', 'application/json')->withStatus($code);
+}
 
-function status_setting_response() {
+function status_setting_response($databaseType) {
     $result = [
         "version" => [
             "lastmodified" => "2021-07-01 00:00:00 +0900",
@@ -84,23 +97,29 @@ function status_setting_response() {
             "tag" => "2.0",
             "expire" => "",
         ],
-        "postgres" => [
-            "status" => "running"
-        ],
-        "MariaDB" => [
+        "$databaseType" => [
             "status" => "running"
         ],
         "log" => [
             [
                 "group" => "systemctl",
                 "name" => "systemctl",
-                "data" => "* postgresql-12.service - PostgreSQL 12 database server\n   Loaded: loaded (/usr/lib/sy,,,",
-            ]
+                "data" => file_get_contents("/tmp/.status/systemctl.txt"),
+            ],
+            [
+                "group" => "mariadb",
+                "name" => "error.log",
+                "data" => "..." . substr(file_get_contents("/var/lib/mysql/error.log"), -1000),
+                "size" => filesize("/var/lib/mysql/error.log"),
+            ],
         ],
         "backup" => ["history" => []],
     ];
 
-    return [$result];
+
+
+
+    return [$result, [], []];
 }
 function settings_response($name, $config = [], $settings = [], $form = []) {
     $payload = [];

@@ -58,6 +58,33 @@ __EOF
 chmod +x $SACLOUDAPI_HOME/bin/*-ext.sh
 $SACLOUDAPI_HOME/bin/update-interfaces-ext.sh
 
+# クオータ設定
+if [ ! -f /aquota.user ]; then
+    if ! type quotacheck ; then
+        yum -y install quota
+    fi
+    if ! grep usrjquota=aquota.user /etc/fstab >/dev/null ; then
+        sed -i /etc/fstab -e 's|/ *ext4 *defaults *1 1|/                       ext4    defaults,usrjquota=aquota.user,jqfmt=vfsv0       1 1|g'
+        reboot
+    fi
+
+    QUOTA_SIZE=$(jq ".Disks[0].SizeMB - 10240" /root/.sacloud-api/server.json)
+    QUOTA_SIZE=$(jq ".Disks[1].SizeMB //$QUOTA_SIZE" /root/.sacloud-api/server.json)
+    QUOTA_SIZE=$(expr $QUOTA_SIZE '*' 1000 / 1024)
+
+    QUOTA_GRACE=$(expr 86400 '*' 3)
+
+    quotacheck -amugv
+    if [ "$SACLOUDB_DATABASE_NAME" = "MariaDB" ]; then
+        setquota -u mysql $(expr $QUOTA_SIZE - 500)M $(expr $QUOTA_SIZE + 500)M 0 0 /
+    fi
+    if [ "$SACLOUDB_DATABASE_NAME" = "postgres" ]; then
+        setquota -u postgres $(expr $QUOTA_SIZE - 500)M $(expr $QUOTA_SIZE + 500)M 0 0 /
+    fi
+    setquota -aut $QUOTA_GRACE $QUOTA_GRACE
+    repquota -au | grep -e User -e mysql -e postgres
+fi
+
 if [ ! -f $SACLOUDB_MODULE_BASE/bin/init.done ]; then
 
     if [ "$SACLOUDB_DATABASE_NAME" = "MariaDB" ]; then
