@@ -175,9 +175,10 @@ fi
 _EOF
 chmod +x $SACLOUDAPI_HOME/bin/is_running.sh
 
-
-sacloud_func_file_cleanup /usr/share/maxscale/gui/js/app~5a11b65b.0e8a9101.js
 MAXSCALE_GUI_PREFIX=/maxscale-gui
+
+if [ -f /usr/share/maxscale/gui/js/app~5a11b65b.0e8a9101 ]; then
+sacloud_func_file_cleanup /usr/share/maxscale/gui/js/app~5a11b65b.0e8a9101.js
 sed -i /usr/share/maxscale/gui/js/app~5a11b65b.0e8a9101.js \
 	-e 's/,o.p="\/",/,o.p="\'$MAXSCALE_GUI_PREFIX'\/",/g' \
 	-e "s/xios.get(['\"]/\0\\$MAXSCALE_GUI_PREFIX/g" \
@@ -188,9 +189,24 @@ sed -i /usr/share/maxscale/gui/js/app~5a11b65b.0e8a9101.js \
 	-e "s/\\$MAXSCALE_GUI_PREFIX\\$MAXSCALE_GUI_PREFIX/\\$MAXSCALE_GUI_PREFIX/g"
 
 
-sacloud_func_file_cleanup /usr/share/maxscale/gui/js/app~06837ae4.1b590c19.js
-sed -i /usr/share/maxscale/gui/js/app~06837ae4.1b590c19.js -e 's/r.p+"/"\'$MAXSCALE_GUI_PREFIX'\//g'
+	sacloud_func_file_cleanup /usr/share/maxscale/gui/js/app~06837ae4.1b590c19.js
+	sed -i /usr/share/maxscale/gui/js/app~06837ae4.1b590c19.js -e 's/r.p+"/"\'$MAXSCALE_GUI_PREFIX'\//g'
+else
+    for jsfile in $(grep 'r.p+"' /usr/share/maxscale/gui/js/app~*.js | cut -d: -f1) ; do
+		sacloud_func_file_cleanup $jsfile
+		sed -i $jsfile \
+			-e 's/r.p+"/"\'$MAXSCALE_GUI_PREFIX'\//g' \
+			-e 's/,o.p="\/",/,o.p="\'$MAXSCALE_GUI_PREFIX'\/",/g' \
+			-e "s/xios.get(['\"]/\0\\$MAXSCALE_GUI_PREFIX/g" \
+			-e "s/xios.patch(['\"]/\0\\$MAXSCALE_GUI_PREFIX/g" \
+			-e "s/xios.put(['\"]/\0\\$MAXSCALE_GUI_PREFIX/g" \
+			-e "s/xios.post(['\"]/\0\\$MAXSCALE_GUI_PREFIX/g" \
+			-e 's/"\/servers\//"\'$MAXSCALE_GUI_PREFIX'\/servers\//g' \
+			-e "s/\\$MAXSCALE_GUI_PREFIX\\$MAXSCALE_GUI_PREFIX/\\$MAXSCALE_GUI_PREFIX/g"
 
+    done
+
+fi
 
 sacloud_func_file_cleanup /usr/share/maxscale/gui/index.html
 sed -i /usr/share/maxscale/gui/index.html \
