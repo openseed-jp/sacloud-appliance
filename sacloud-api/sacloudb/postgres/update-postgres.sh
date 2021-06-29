@@ -53,6 +53,7 @@ hot_standby = on
 wal_log_hints = on 
 recovery_target_timeline = 'latest'
 
+log_file_mode = 117
 _EOL
 
 	: =====================================================
@@ -104,24 +105,54 @@ chown -R $SACLOUD_ADMIN_USER:$SACLOUD_ADMIN_USER /home/$SACLOUD_ADMIN_USER
 cp -f /var/lib/pgsql/.pgpass /usr/share/httpd/.pgpass 
 chown -R apache:apache /usr/share/httpd/.pgpass
 
+: 再起動 $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
+apachectl restart
 
-export PGADMIN_SETUP_EMAIL=$SACLOUDB_ADMIN_USER@localhost
+
+
+: #初期設定# $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
+
+export PGADMIN_SETUP_EMAIL=$SACLOUDB_ADMIN_USER
 export PGADMIN_SETUP_PASSWORD=$SACLOUDB_ADMIN_PASS
 export PYTHONPATH=/usr/pgadmin4/venv/lib/python3.6/site-packages
 mkdir -p /var/lib/pgadmin /var/log/pgadmin
 
-
-: #初期設定# $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
-cat <<_EOF > /usr/pgadmin4/web/config_local.py
-MASTER_PASSWORD_REQUIRED=False
-_EOF
-
-python3 /usr/pgadmin4/web/setup.py
 cat <<_EOF > /var/lib/pgadmin/servers.json
 {
     "Servers": {
-
 		"1": {
+            "Name": "db-$APPLIANCE_ID(pgpool:9999)",
+            "Group": "db-$APPLIANCE_ID",
+            "Host": "$SERVER_VIP",
+            "Port": 9999,
+            "MaintenanceDB": "$SACLOUDB_DEFAULT_USER",
+            "Username": "$SACLOUDB_DEFAULT_USER",
+            "SSLMode": "prefer",
+            "SSLCert": "<STORAGE_DIR>/.postgresql/postgresql.crt",
+            "SSLKey": "<STORAGE_DIR>/.postgresql/postgresql.key",
+            "SSLCompression": 0,
+            "Timeout": 10,
+            "UseSSHTunnel": 0,
+            "TunnelPort": "22",
+            "TunnelAuthentication": 0
+        },
+		"2": {
+            "Name": "db-$APPLIANCE_ID(VIP:$PGPORT)",
+            "Group": "db-$APPLIANCE_ID",
+            "Host": "$SERVER_VIP",
+            "Port": $PGPORT,
+            "MaintenanceDB": "$SACLOUDB_DEFAULT_USER",
+            "Username": "$SACLOUDB_DEFAULT_USER",
+            "SSLMode": "prefer",
+            "SSLCert": "<STORAGE_DIR>/.postgresql/postgresql.crt",
+            "SSLKey": "<STORAGE_DIR>/.postgresql/postgresql.key",
+            "SSLCompression": 0,
+            "Timeout": 10,
+            "UseSSHTunnel": 0,
+            "TunnelPort": "22",
+            "TunnelAuthentication": 0
+        },
+		"3": {
             "Name": "db-$APPLIANCE_ID-01",
             "Group": "db-$APPLIANCE_ID",
             "Host": "$SERVER1_LOCALIP",
@@ -137,7 +168,7 @@ cat <<_EOF > /var/lib/pgadmin/servers.json
             "TunnelPort": "22",
             "TunnelAuthentication": 0
         },
-		"2": {
+		"4": {
             "Name": "db-$APPLIANCE_ID-02",
             "Group": "db-$APPLIANCE_ID",
             "Host": "$SERVER2_LOCALIP",
@@ -156,19 +187,36 @@ cat <<_EOF > /var/lib/pgadmin/servers.json
     }
 }
 _EOF
-chown -R apache:apache /var/log/pgadmin /var/lib/pgadmin
+
+# pgadmin4 version 5.4 は動かない・・・。 
+yum erase -y pgadmin4 pgadmin4-*
+rpm -ivh https://ftp.postgresql.org/pub/pgadmin/pgadmin4/yum/redhat/rhel-7-x86_64/pgadmin4-server-5.3-1.el7.x86_64.rpm
+rpm -ivh https://ftp.postgresql.org/pub/pgadmin/pgadmin4/yum/redhat/rhel-7-x86_64/pgadmin4-python3-mod_wsgi-4.7.1-2.el7.x86_64.rpm
+rpm -ivh https://ftp.postgresql.org/pub/pgadmin/pgadmin4/yum/redhat/rhel-7-x86_64/pgadmin4-web-5.3-1.el7.noarch.rpm
+
+cat <<_EOF > /usr/pgadmin4/web/config_local.py
+UPGRADE_CHECK_ENABLED=False
+_EOF
+
+: #初期化
+python3 /usr/pgadmin4/web/setup.py
 
 : #設定情報読み込み# $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
 python3 /usr/pgadmin4/web/setup.py \
 	--user $PGADMIN_SETUP_EMAIL \
 	--load-servers /var/lib/pgadmin/servers.json
 
+: #権限変更
+chown -R apache:apache /var/lib/pgadmin /var/log/pgadmin
 
-: aa #再起動# $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
+: 再起動 $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
 apachectl restart
-: #初回アクセス# $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
-curl -sSL http://localhost/pgadmin4/ >/dev/null
+
+: 初回アクセス $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
+curl -sSL http://localhost/pgadmin4/ >/dev/null 
+
+: Default User を pgadmin4 に追加
+sacloudb_update_pgadmin_user $SACLOUDB_DEFAULT_USER $SACLOUDB_DEFAULT_PASS
+
+
 : #END# $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
-
-
-

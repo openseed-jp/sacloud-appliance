@@ -12,11 +12,28 @@ SERVER_LOCAL_IP=$SERVER_LOCALIP
 SERVER_PEER_IP=$SERVER_PEER_LOCALIP
 SERVER_VIRTUAL_IP=$SERVER_VIP
 
+
+: =====================================================
+:  modify /var/lib/pgsql/.ssh : $0:$LINENO
+: =====================================================
+if [ ! -d /var/lib/pgsql/.ssh ]; then
+    mkdir -p /var/lib/pgsql/.ssh
+    cp -f /root/.ssh/id_rsa_admin /var/lib/pgsql/.ssh/id_rsa_pgpool
+    cp -f /root/.ssh/id_rsa_admin.pub /var/lib/pgsql/.ssh/id_rsa_pgpool.pub
+    cp -f /root/.ssh/id_rsa_admin.pub /var/lib/pgsql/.ssh/authorized_keys
+    chown -R postgres:postgres /var/lib/pgsql/.ssh
+    chmod 600 /var/lib/pgsql/.ssh/*
+    chmod 700 /var/lib/pgsql/.ssh
+    ls -alt /var/lib/pgsql/.ssh/* | md5sum | cut -d' ' -f1 | passwd --stdin postgres
+fi
+
 : =====================================================
 :  modify /etc/pgpool-II/pgpool.conf : $0:$LINENO
 : =====================================================
 sacloud_func_file_cleanup /etc/pgpool-II/pgpool.conf
 cp /etc/pgpool-II/pgpool.conf.sample-stream /etc/pgpool-II/pgpool.conf
+
+
 cat <<_EOL >> /etc/pgpool-II/pgpool.conf
 # sacloud
 listen_addresses '*'
@@ -25,6 +42,7 @@ socket_dir = '/var/run/pgpool'
 pcp_socket_dir = '/var/run/pgpool'
 enable_pool_hba = 'off'
 allow_clear_text_frontend_auth = 'on' 
+pool_passwd = ''
 
 ## watch dog
 # use_watchdog = on
@@ -79,14 +97,12 @@ _EOL
 
 cat /etc/pgpool-II/failover.sh.sample \
 	| sed -e "s|^PGHOME=.*$|PGHOME=$PGHOME|" \
-	| sed -e 's/id_rsa_pgpool/id_rsa/g' \
 	> /etc/pgpool-II/failover.sh
 
 cat /etc/pgpool-II/follow_master.sh.sample \
 	| sed -e "s|^PGHOME=.*$|PGHOME=$PGHOME|" \
 	| sed -e "s/^REPLUSER=.*/REPLUSER=$SACLOUDB_ADMIN_USER/" \
 	| sed -e "s/^PCP_USER=.*/PCP_USER=$SACLOUDB_ADMIN_USER/" \
-	| sed -e 's/id_rsa_pgpool/id_rsa/g' \
 	> /etc/pgpool-II/follow_master.sh	
 
 cat <<__EOF >/etc/pgpool-II/failback.sh
@@ -196,14 +212,15 @@ if [ -f /etc/pgpool-II/pool_hba.conf ]; then
 fi
 
 
-su - postgres <<_EOF 
-psql postgres -t -A \
-    -o /etc/pgpool-II/pool_passwd \
-    -c "select concat(usename, ':', passwd) from pg_shadow where passwd is not null;"
-_EOF
+#su - postgres <<_EOF 
+#psql postgres -t -A \
+#    -o /etc/pgpool-II/pool_passwd \
+#    -c "select concat(usename, ':', passwd) from pg_shadow where passwd is not null;"
+#_EOF
+#chmod 644 /etc/pgpool-II/pool_passwd
 
 chown -R postgres:postgres /etc/pgpool-II
-chmod 644 /etc/pgpool-II/{pool_passwd,pgpool.conf,pcp.conf}
+chmod 644 /etc/pgpool-II/{pgpool.conf,pcp.conf}
 
 cat <<_EOF > /etc/httpd/conf.d/pgpoolAdmin.conf
 
@@ -283,3 +300,15 @@ exit 0
 _EOF
 chmod +x $SACLOUDAPI_HOME/bin/*.sh
 
+
+# /var/www/html/index.html
+cat <<_EOF > /var/www/html/index.html
+<html>
+<body>
+<ul>
+<li><a href="/pgadmin4/">pgAdmin 4 (v5.3)</a>(ID: ${SACLOUDB_DEFAULT_USER}@db-${APPLIANCE_ID}, PW: [default password]</li>
+<li><a href="/pgpooladmin/">pgpool Administration Tool Version 4.1.0</a></li>
+</ul>
+</body>
+</html>
+_EOF

@@ -54,6 +54,7 @@ $SERVER1_LOCALIP db-$APPLIANCE_ID-01
 $SERVER2_LOCALIP db-$APPLIANCE_ID-02
 
 _EOF
+
 __EOF
 chmod +x $SACLOUDAPI_HOME/bin/*-ext.sh
 $SACLOUDAPI_HOME/bin/update-interfaces-ext.sh

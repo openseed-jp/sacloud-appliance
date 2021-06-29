@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd /root/.sacloud-api/sacloudb && . .env
+
 HOME=/root
 SCRIPT=/root/.sacloud-api/sacloudb/bin/cron5min.sh
 CRONFILE=/var/spool/cron/root
@@ -12,4 +14,4 @@ _EOL
     systemctl reload crond
 fi
 
-/root/.sacloud-api/sacloudb/bin/update-status-systemctl.sh
+$SACLOUDB_MODULE_BASE/$SACLOUDB_DATABASE_NAME/update-status-systemctl.sh

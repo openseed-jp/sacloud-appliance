@@ -297,3 +297,15 @@ systemctl is-active keepalived.service
 
 
 chmod +x $SACLOUDAPI_HOME/bin/*.sh
+
+# /var/www/html/index.html
+cat <<_EOF > /var/www/html/index.html
+<html>
+<body>
+<ul>
+<li><a href="/phpmyadmin/">phpMyAdmin 5.1.0</a></li>
+<li><a href="/maxscale-gui/">MariaDB MaxScale 2.5.13</a></li>
+</ul>
+</body>
+</html>
+_EOF

@@ -33,26 +33,41 @@ $app->group('/external-api', function (Group $api) {
 $app->group('/sacloud-api', function (Group $api) {
     $api->get('/download-log/{file}.log', function (Request $request, Response $response, $args) {
         // TODO ログ取得
-        $payload = ["Log" => file_get_contents("/var/lib/mysql/error.log")];
+        $file = $args["file"];
 
+        if($databaseType == "MariaDB") {
+            $file = "/var/lib/mysql/" . basename($file);
+        } else if(true || $databaseType == "postgres") {
+            // FIXME
+            $PGDATA = "/var/lib/pgsql/13/data";
+            $file = "$PGDATA/log/" . basename($file);
+        }
+
+        $payload = [
+            "Log" => file_get_contents($file),
+            "FileName" => $file
+        ];
         return json_response($response, 200, $payload);
     });
     $api->put('/service-ctrl/restart', function (Request $request, Response $response, $args) {
-         list($payload, $status, $headers) = status_setting_response("MariaDB");
+        $engine = get_appliance_dbconf("DatabaseName");
+        list($payload, $status, $headers) = status_setting_response($engine);
         // TODO 再起動
         $payload = ["Accepted" => true];
 
         return json_response($response, 202, $payload);
     });
     $api->put('/config', function (Request $request, Response $response, $args) {
-        list($payload, $status, $headers) = status_setting_response("MariaDB");
+        $engine = get_appliance_dbconf("DatabaseName");
+        list($payload, $status, $headers) = status_setting_response($engine);
         // TODO 反映
         $payload = ["Accepted" => true];
 
         return json_response($response, 202, $payload);
     });
     $api->get('/status', function (Request $request, Response $response, $args) {
-        list($payload, $status, $headers) = status_setting_response("MariaDB");
+        $engine = get_appliance_dbconf("DatabaseName");
+        list($payload, $status, $headers) = status_setting_response($engine);
 
         return json_response($response, 200, $payload);
     });
@@ -89,6 +104,38 @@ function json_response($response, $code, $payload) {
 }
 
 function status_setting_response($databaseType) {
+    $logs = [
+        [
+            "group" => "systemctl",
+            "name" => "systemctl",
+            "data" => file_get_contents("/tmp/.status/systemctl.txt"),
+        ],
+    ];
+
+    if($databaseType == "MariaDB") {
+        $logs[] = [
+            "group" => "mariadb",
+            "name" => "error.log",
+            "data" => "..." . mb_substr(file_get_contents("/var/lib/mysql/error.log"), -1000),
+            "size" => filesize("/var/lib/mysql/error.log"),
+        ];
+    } else if(true || $databaseType == "postgres") {
+        // FIXME
+        $PGDATA = "/var/lib/pgsql/13/data";
+        $files = glob("$PGDATA/log/postgresql-*.log");
+        usort($files, function($a, $b) {return -(filemtime($b) - filemtime($a));});
+        foreach($files as $file){
+            if(is_file($file)){
+                $logs[] = [
+                    "group" => "postgres",
+                    "name" => basename($file),
+                    "data" => "..." . mb_substr(file_get_contents($file), -1000),
+                    "size" => filesize($file),
+                ];
+            }
+        }
+    }
+
     $result = [
         "version" => [
             "lastmodified" => "2021-07-01 00:00:00 +0900",
@@ -100,19 +147,7 @@ function status_setting_response($databaseType) {
         "$databaseType" => [
             "status" => "running"
         ],
-        "log" => [
-            [
-                "group" => "systemctl",
-                "name" => "systemctl",
-                "data" => file_get_contents("/tmp/.status/systemctl.txt"),
-            ],
-            [
-                "group" => "mariadb",
-                "name" => "error.log",
-                "data" => "..." . substr(file_get_contents("/var/lib/mysql/error.log"), -1000),
-                "size" => filesize("/var/lib/mysql/error.log"),
-            ],
-        ],
+        "log" => $logs,
         "backup" => ["history" => []],
     ];
 
@@ -191,5 +226,18 @@ function ping_vip_connection(){
         return [["status" => "200 Ok", "message" => "Ok" ]];
     } catch (PDOException $e) {
         return [["status" => "500 Server Internal Error", "message" => $e->getMessage() ]];
+    }
+}
+
+
+function get_appliance_dbconf($key = null) {
+    $json = json_decode(file_get_contents("/tmp/.status/appliance.json"), true);
+    $dbconf = $json["Appliance"]["Remark"]["DBConf"];
+    if($key == null) {
+            return $dbconf;
+    } else if(isset($dbconf["Common"][$key])) {
+            return $dbconf["Common"][$key];
+    } else {
+            throw new Exception();
     }
 }

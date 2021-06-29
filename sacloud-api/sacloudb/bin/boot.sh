@@ -41,18 +41,6 @@ if [ "$SACLOUDB_DATABASE_NAME" = "MariaDB" ]; then
     else
         echo "FATAL";
     fi
-
-cat <<_EOF > /var/www/html/index.html
-<html>
-<body>
-<ul>
-<li><a href="/phpmyadmin/">phpMyAdmin 5.1.0</a></li>
-<li><a href="/maxscale-gui/">MariaDB MaxScale 2.5.13</a></li>
-</ul>
-</body>
-</html>
-_EOF
-
 fi
 
 if [ "$SACLOUDB_DATABASE_NAME" = "postgres" ]; then
@@ -60,12 +48,17 @@ if [ "$SACLOUDB_DATABASE_NAME" = "postgres" ]; then
     su - postgres -c "$PGHOME/bin/pg_ctl start -D $PGDATA"
 
     wait_for_db_connect $SERVER1_LOCALIP 3
-    wait_for_db_connect $SERVER2_LOCALIP 3
+    wait_for_db_connect $SERVER2_LOCALIP 12
 
 
     systemctl start pgpool
 
     systemctl start keepalived
+
+
+    # Apache からログをみたいため
+    chmod 710 /var/lib/pgsql /var/lib/pgsql/13 /var/lib/pgsql/13/data
+    chmod 770 /var/lib/pgsql/13/data/log
 fi
 
 apachectl restart
