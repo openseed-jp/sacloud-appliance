@@ -40,14 +40,18 @@ listen_addresses '*'
 logdir = '/var/log/pgpool-II-13'
 socket_dir = '/var/run/pgpool'
 pcp_socket_dir = '/var/run/pgpool'
+allow_clear_text_frontend_auth = on
+
 enable_pool_hba = 'off'
-allow_clear_text_frontend_auth = 'on' 
-pool_passwd = ''
+pool_passwd = 'pool_passwd'
+
 
 ## watch dog
-# use_watchdog = on
-use_watchdog = off
-delegate_IP = '$SERVER_VIRTUAL_IP'
+use_watchdog = on
+trusted_servers = 'db-${APPLIANCE_ID},db-${APPLIANCE_ID}-01,db-${APPLIANCE_ID}-02'
+#delegate_IP = '$SERVER_VIRTUAL_IP'
+
+wd_lifecheck_method = 'query'
 wd_lifecheck_user = '$SACLOUDB_ADMIN_USER'
 wd_lifecheck_password = '$SACLOUDB_ADMIN_PASS'
 wd_hostname = '$SERVER_LOCAL_IP'
@@ -91,6 +95,9 @@ backend_weight1 = 1
 backend_data_directory1 = '$PGDATA'
 backend_flag1 = 'ALLOW_TO_FAILOVER'
 
+ssl = on
+ssl_key = '/etc/pki/tls/private/postgres.key'
+ssl_cert = '/etc/pki/tls/certs/postgres.crt'
 
 # /sacloud
 _EOL
@@ -187,9 +194,9 @@ db-$APPLIANCE_ID-02:9898:$SACLOUDB_ADMIN_USER:$SACLOUDB_ADMIN_PASS
 _EOL
 chmod 600 /root/.pcppass
 
-
-
-pg_md5 --md5auth --username=$SACLOUDB_ADMIN_USER "$SACLOUDB_ADMIN_PASS"
+#pg_md5 --md5auth --username=$SACLOUDB_ADMIN_USER "$SACLOUDB_ADMIN_PASS"
+echo "$SACLOUDB_ADMIN_USER:$SACLOUDB_ADMIN_PASS" > /etc/pgpool-II/pool_passwd
+chmod 600 /etc/pgpool-II/pool_passwd
 
 usermod -aG postgres $SACLOUD_ADMIN_USER
 
@@ -197,18 +204,19 @@ usermod -aG postgres $SACLOUD_ADMIN_USER
 chown -R root:root /usr/pgpoolAdmin-4*
 chown -R apache:apache /usr/pgpoolAdmin-4*/{templates_c,conf/pgmgt.conf.php} 
 
-
 : =====================================================
 :  modify pool_hba.conf : $0:$LINENO
 : =====================================================
 if [ -f /etc/pgpool-II/pool_hba.conf ]; then
     sacloud_func_file_cleanup /etc/pgpool-II/pool_hba.conf
     sed -e '/^# sacloud$/,/^# \/sacloud$/d' -i /etc/pgpool-II/pool_hba.conf
-    echo "# sacloud" >> /etc/pgpool-II/pool_hba.conf
-    echo "host    all         all         0.0.0.0/0          md5"
-#    echo "host    all         all         0.0.0.0/0          trust"
-#    echo "host    all         all         0.0.0.0/0          scram-sha-256"
-    echo "# /sacloud" >> /etc/pgpool-II/pool_hba.conf
+    cat <<_EOL >> /etc/pgpool-II/pool_hba.conf
+# sacloud
+hostssl  all         all         0.0.0.0/0          md5
+#host    all         all         0.0.0.0/0          trust
+#host    all         all         0.0.0.0/0          scram-sha-256
+# /sacloud
+_EOL
 fi
 
 
@@ -295,8 +303,30 @@ cd $(dirname $0)
 
 set -o pipefail
 
-exit 0
+export PGPASSFILE=/home/sacloud-admin/.pgpass
+psql -h localhost -U sacloud-admin -p 5432 postgres -c "SELECT pg_is_in_recovery();"  -P expanded=on --csv > /tmp/.status/postgres
 
+systemctl status pgpool > /tmp/.status/pgpool
+STATUS_PGPOOL=$?
+if [ ! $STATUS_PGPOOL = 0 ]; then
+#    shutdown -t0 now
+    exit 1
+fi
+
+ip addr | grep "scope global secondary" >/dev/null
+BACKUP_VIP=$?
+
+# バックアップとして動作していた場合、 常にリカバリ中のため、 t となる。 プライマリは、 f
+grep 'pg_is_in_recovery,f' /tmp/.status/postgres > /dev/null 2>&1
+BACKUP_DB=$?
+
+echo $BACKUP_VIP $BACKUP_DB
+if [ $BACKUP_VIP = 0 -a $BACKUP_DB = 1 ]; then
+    # VIP がプライマリの時, DB がバックアップだったら、NG
+    exit 1;
+fi
+
+exit 0
 _EOF
 chmod +x $SACLOUDAPI_HOME/bin/*.sh
 

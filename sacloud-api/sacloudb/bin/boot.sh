@@ -63,8 +63,6 @@ fi
 
 apachectl restart
 
-
-
 # cron 登録
 $SACLOUDB_MODULE_BASE/bin/cron5min.sh
 

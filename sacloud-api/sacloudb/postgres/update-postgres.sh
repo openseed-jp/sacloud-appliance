@@ -54,6 +54,15 @@ wal_log_hints = on
 recovery_target_timeline = 'latest'
 
 log_file_mode = 117
+
+ssl = on
+ssl_cert_file = '/etc/pki/tls/certs/postgres.crt'
+ssl_key_file = '/etc/pki/tls/private/postgres.key'
+ssl_ciphers = 'HIGH:MEDIUM:+3DES:!aNULL'
+ssl_prefer_server_ciphers = off
+ssl_ecdh_curve = 'prime256v1'
+ssl_min_protocol_version = 'TLSv1.2'
+
 _EOL
 
 	: =====================================================
@@ -61,10 +70,15 @@ _EOL
 	: =====================================================
 	sacloud_func_file_cleanup $PGDATA/pg_hba.conf
 
+    sed -e "s/^host/#host/g" -i $PGDATA/pg_hba.conf
+
 	cat <<_EOL >> $PGDATA/pg_hba.conf
 # sacloud
 local   all             $SACLOUD_ADMIN_USER                      peer
-host    replication     $SACLOUD_ADMIN_USER  $DB_REPLICATION_NETROWK_ADDRESS/$DB_REPLICATION_NETROWK_MASKLEN    md5
+host    replication     $SACLOUD_ADMIN_USER  db-${APPLIANCE_ID}-01    md5
+host    replication     $SACLOUD_ADMIN_USER  db-${APPLIANCE_ID}-02    md5
+#host    postgres        $SACLOUD_ADMIN_USER  db-${APPLIANCE_ID}-01    trust
+#host    postgres        $SACLOUD_ADMIN_USER  db-${APPLIANCE_ID}-02    trust
 
 host    all             all             127.0.0.1/32    md5
 host    all             all             $DB_REPLICATION_NETROWK_ADDRESS/$DB_REPLICATION_NETROWK_MASKLEN    md5

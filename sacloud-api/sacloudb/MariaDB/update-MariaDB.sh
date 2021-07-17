@@ -44,6 +44,13 @@ sync_binlog = 1
 slave_net_timeout = 60
 skip_name_resolve = on
 
+
+# ssl
+ssl-key  = /etc/pki/tls/private/mysql.key
+ssl-cert = /etc/pki/tls/certs/mysql.crt
+ssl_cipher=DHE-RSA-AES128-GCM-SHA256:AES128-SHA
+tls_version=TLSv1.2
+
 [server]
 port=3306
 
@@ -115,11 +122,11 @@ _EOL
 
 E1="s/\(cfg\['blowfish_secret'\]\) = ''/\1 = '$(echo $SERVER_VIP$SACLOUDB_ADMIN_PASS | md5sum | cut -d' ' -f1)'/" 
 E2='s/^$cfg..Servers/\/\/\0/g'
-E3='/Authentication type/i $cfg["Servers"][$i++] = ["auth_type" => "cookie", "host" => "db-'$APPLIANCE_ID'", "port" => "4006", "compress" => false, "AllowNoPassword" => false];'
-E4='/Authentication type/i $cfg["Servers"][$i++] = ["auth_type" => "cookie", "host" => "db-'$APPLIANCE_ID'", "port" => "4008", "compress" => false, "AllowNoPassword" => false];'
-E5='/Authentication type/i $cfg["Servers"][$i++] = ["auth_type" => "cookie", "host" => "db-'$APPLIANCE_ID'", "port" => "3306", "compress" => false, "AllowNoPassword" => false];'
-E6='/Authentication type/i $cfg["Servers"][$i++] = ["auth_type" => "cookie", "host" => "db-'$APPLIANCE_ID-01'", "port" => "3306", "compress" => false, "AllowNoPassword" => false];'
-E7='/Authentication type/i $cfg["Servers"][$i++] = ["auth_type" => "cookie", "host" => "db-'$APPLIANCE_ID-02'", "port" => "3306", "compress" => false, "AllowNoPassword" => false];'
+E3='/Authentication type/i $cfg["Servers"][$i++] = ["auth_type" => "cookie", "host" => "db-'$APPLIANCE_ID'", "port" => "4006", "compress" => false, "AllowNoPassword" => false, "ssl" => 1];'
+E4='/Authentication type/i $cfg["Servers"][$i++] = ["auth_type" => "cookie", "host" => "db-'$APPLIANCE_ID'", "port" => "4008", "compress" => false, "AllowNoPassword" => false, "ssl" => 1];'
+E5='/Authentication type/i $cfg["Servers"][$i++] = ["auth_type" => "cookie", "host" => "db-'$APPLIANCE_ID'", "port" => "3306", "compress" => false, "AllowNoPassword" => false, "ssl" => 1];'
+E6='/Authentication type/i $cfg["Servers"][$i++] = ["auth_type" => "cookie", "host" => "db-'$APPLIANCE_ID-01'", "port" => "3306", "compress" => false, "AllowNoPassword" => false, "ssl" => 1];'
+E7='/Authentication type/i $cfg["Servers"][$i++] = ["auth_type" => "cookie", "host" => "db-'$APPLIANCE_ID-02'", "port" => "3306", "compress" => false, "AllowNoPassword" => false, "ssl" => 1];'
 sed -e "$E1" -e "$E2" -e "$E3" -e "$E4" -e "$E5" -e "$E6" -e "$E7" /usr/share/phpMyAdmin/config.sample.inc.php > /usr/share/phpMyAdmin/config.inc.php
 
 # Basic認証のパスワードを利用する場合

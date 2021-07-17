@@ -90,6 +90,26 @@ CustomLog logs/ssl_request_log \
     Require valid-user
 </Directory>
 
+
+
+ProxyPass        /tail/ws ws://localhost:8011/ws
+ProxyPassReverse /tail/ws ws://localhost:8011/ws
+ProxyPass        /tail http://localhost:8011
+ProxyPassReverse /tail http://localhost:8011
+
+<Location /tail>
+    Order allow,deny
+    Allow from all
+
+    AuthUserFile /etc/httpd/.htpasswd-secure
+    AuthGroupFile /dev/null
+    AuthName "Basic Auth"
+    AuthType Basic
+    Require valid-user
+
+    ProxyPreserveHost on
+</Location>
+
 </VirtualHost>
 _EOF
 
@@ -97,3 +117,7 @@ sed -i /usr/lib/systemd/system/httpd.service -e 's/^PrivateTmp=.*/PrivateTmp=fal
 systemctl daemon-reload
 apachectl restart
 
+: # gotty
+if which gotty >/dev/null ; then
+    gotty --address 127.0.0.1 --port 8011 --max-connection 3 --title-format $(hostname) --permit-arguments tail 2> /tmp/gotty.log &
+fi

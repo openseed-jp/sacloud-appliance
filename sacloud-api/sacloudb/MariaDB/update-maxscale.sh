@@ -115,12 +115,18 @@ type=listener
 service=Read-Only-Service
 protocol=MariaDBClient
 port=${MAXSCALE_SERVER_PORT_RO}
+ssl=true
+ssl_cert=/etc/pki/tls/certs/mysql.crt
+ssl_key=/etc/pki/tls/private/mysql.key
 
 [Read-Write-Listener]
 type=listener
 service=Read-Write-Service
 protocol=MariaDBClient
 port=${MAXSCALE_SERVER_PORT_RW}
+ssl=true
+ssl_cert=/etc/pki/tls/certs/mysql.crt
+ssl_key=/etc/pki/tls/private/mysql.key
 
 _EOL
 

@@ -88,6 +88,20 @@ fi
 
 if [ ! -f $SACLOUDB_MODULE_BASE/bin/init.done ]; then
 
+    # TODO: 自己署名ファイルの更新
+    openssl req -x509 -sha256 -nodes -days 36500 -newkey rsa:2048 -subj /CN=localhost -keyout /etc/pki/tls/private/localhost.key -out /etc/pki/tls/certs/localhost.crt
+    chmod 600 /etc/pki/tls/private/localhost.key /etc/pki/tls/certs/localhost.crt
+
+    openssl req -x509 -sha256 -nodes -days 36500 -newkey rsa:2048 -subj /CN=localhost -keyout /etc/pki/tls/private/postgres.key -out /etc/pki/tls/certs/postgres.crt
+    chmod 400 /etc/pki/tls/private/postgres.key /etc/pki/tls/certs/postgres.crt
+    chown postgres:postgres /etc/pki/tls/private/postgres.key /etc/pki/tls/certs/postgres.crt
+
+    openssl req -x509 -sha256 -nodes -days 36500 -newkey rsa:2048 -subj /CN=localhost -keyout /etc/pki/tls/private/mysql.key -out /etc/pki/tls/certs/mysql.crt
+    chmod 440 /etc/pki/tls/private/mysql.key /etc/pki/tls/certs/mysql.crt
+    chown macscale:mysql /etc/pki/tls/private/mysql.key /etc/pki/tls/certs/mysql.crt
+
+
+
     if [ "$SACLOUDB_DATABASE_NAME" = "MariaDB" ]; then
         $SACLOUDB_MODULE_BASE/MariaDB/update-MariaDB.sh
         $SACLOUDB_MODULE_BASE/MariaDB/init-replication.sh
@@ -97,6 +111,15 @@ if [ ! -f $SACLOUDB_MODULE_BASE/bin/init.done ]; then
         $SACLOUDB_MODULE_BASE/postgres/update-postgres.sh
         $SACLOUDB_MODULE_BASE/postgres/init-replication.sh
         $SACLOUDB_MODULE_BASE/postgres/update-pgpool.sh
+    fi
+
+    # TODO: （アーカイブ作成時に書くべき？）
+    sed -e 's/^UsePAM no/UsePAM yes/g' -i /etc/ssh/sshd_config
+    systemctl restart sshd
+
+    # TODO: その他の設定（アーカイブ作成時に書くべき？）
+    if ! which gotty >/dev/null ; then
+        curl -SsL https://github.com/yudai/gotty/releases/download/v1.0.1/gotty_linux_amd64.tar.gz | tar zxvf - -C /usr/bin/
     fi
 
     touch $SACLOUDB_MODULE_BASE/bin/init.done
