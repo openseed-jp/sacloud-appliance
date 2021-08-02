@@ -32,12 +32,12 @@ $app->group('/external-api', function (Group $api) {
 
 $app->group('/sacloud-api', function (Group $api) {
     $api->get('/download-log/{file}.log', function (Request $request, Response $response, $args) {
+        $engine = get_appliance_dbconf("DatabaseName");
         // TODO ログ取得
         $file = $args["file"];
-
-        if($databaseType == "MariaDB") {
+        if($engine == "MariaDB") {
             $file = "/var/lib/mysql/" . basename($file);
-        } else if(true || $databaseType == "postgres") {
+        } else if($engine == "postgres") {
             // FIXME
             $PGDATA = "/var/lib/pgsql/13/data";
             $file = "$PGDATA/log/" . basename($file);
@@ -74,6 +74,45 @@ $app->group('/sacloud-api', function (Group $api) {
     $api->get('/parameter', function (Request $request, Response $response, $args) {
         $payload = settings_response("Parameter");
 
+        $text = file_get_contents(__DIR__ . "/notes/113200007922");
+        $text = str_replace('$CLOUD_APPLIANCE_DATABASE_SERVICE_PORT', 3306, $text);
+        $json = json_decode($text, true);
+
+        $json["Form"] = array_values(array_filter($json["Form"], function($item) {
+            $a = explode("/", $item["name"]);
+            if($a[0] !== "MariaDB") return false;
+            $name = array_pop($a);
+            if($name === "port") return false;
+
+            return ($name === "max_connections");
+        }));
+        $payload["Remark"]["Form"] = $json["Form"];
+        return json_response($response, 200, $payload);
+    });
+    $api->put('/parameter', function (Request $request, Response $response, $args) {
+        $data = sacloudb_parsedBody($request->getBody()->getContents());
+        $root = sacloudb_parsedAttr($data,  "Parameter", "/");
+        $sections = [
+                "mysqld" => [],
+        ];
+        foreach($root["MariaDB"] as $_ => $file){
+                foreach($sections as $sec => $_) {
+                        foreach((array)$file[$sec] as $k => $v) {
+                                if(strlen($v) > 0) $sections[$sec][] = "$k=$v";
+                        }
+                }
+        }
+        $conf = [];
+        foreach($sections as $name => $lines){
+            $conf[] = "[$name]";
+            $conf = array_merge($conf, $lines);
+            $conf[] = "\n";
+        }
+
+        file_put_contents("/etc/my.cnf.d/zz_sacloudb.json", json_encode($data));
+        file_put_contents("/etc/my.cnf.d/zz_sacloudb.cnf", implode("\n", $conf));
+
+        $payload = ["Success" => true];
         return json_response($response, 200, $payload);
     });
     $api->get('/plugin', function (Request $request, Response $response, $args) {
@@ -95,6 +134,32 @@ try {
     header("Content-Type: application/json");
     $payload = ["code" => $e->getCode(), "message" => $e->getMessage()];
     print json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+}
+
+function sacloudb_parsedAttr($data, $category, $sep) {
+    $root = [];
+    foreach($data[$category]["Attr"] as $key => $value) {
+        $a = explode($sep, $key);
+        $name = array_pop($a);
+        $cur = &$root;
+        foreach($a as $k) {
+            if(!isset($cur[$k])) $cur[$k] = [];
+            $cur = &$cur[$k];
+        }
+        $cur[$name] = $value;
+
+    }
+    return $root;
+}
+
+
+function sacloudb_parsedBody($contents) {
+    if(substr($contents,0, 5) === "data=") {
+        parse_str($contents, $out);
+        return json_decode($out["data"], true);
+    } else {
+        return json_decode($contents, true);
+    }
 }
 
 function json_response($response, $code, $payload) {
@@ -119,7 +184,7 @@ function status_setting_response($databaseType) {
             "data" => "..." . mb_substr(file_get_contents("/var/lib/mysql/error.log"), -1000),
             "size" => filesize("/var/lib/mysql/error.log"),
         ];
-    } else if(true || $databaseType == "postgres") {
+    } else if($databaseType == "postgres") {
         // FIXME
         $PGDATA = "/var/lib/pgsql/13/data";
         $files = glob("$PGDATA/log/postgresql-*.log");

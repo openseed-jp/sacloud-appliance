@@ -98,7 +98,7 @@ if [ ! -f $SACLOUDB_MODULE_BASE/bin/init.done ]; then
 
     openssl req -x509 -sha256 -nodes -days 36500 -newkey rsa:2048 -subj /CN=localhost -keyout /etc/pki/tls/private/mysql.key -out /etc/pki/tls/certs/mysql.crt
     chmod 440 /etc/pki/tls/private/mysql.key /etc/pki/tls/certs/mysql.crt
-    chown macscale:mysql /etc/pki/tls/private/mysql.key /etc/pki/tls/certs/mysql.crt
+    chown maxscale:mysql /etc/pki/tls/private/mysql.key /etc/pki/tls/certs/mysql.crt
 
 
 

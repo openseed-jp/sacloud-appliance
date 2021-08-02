@@ -93,6 +93,10 @@ password=${SACLOUDB_ADMIN_PASS}
 _EOL
 fi
 
+touch /etc/my.cnf.d/zz_sacloudb.cnf /etc/my.cnf.d/zz_sacloudb.json /etc/my.cnf.d/zz_sacloudb.sql
+chown root:mysql /etc/my.cnf.d/zz_sacloudb.cnf /etc/my.cnf.d/zz_sacloudb.json /etc/my.cnf.d/zz_sacloudb.sql
+chmod 660 /etc/my.cnf.d/zz_sacloudb.cnf /etc/my.cnf.d/zz_sacloudb.json /etc/my.cnf.d/zz_sacloudb.sql
+
 
 ### PHP MYADMIN
 sacloud_func_file_cleanup /etc/httpd/conf.d/phpMyAdmin.conf
