@@ -266,7 +266,7 @@ sacloud_func_file_cleanup /etc/keepalived/keepalived.conf
 VRRP_STATE=backup
 VRRP_PRIORITY=100
 VRRP_INTERFACE=eth1
-VRRP_IPADDRESS=$(jq -r .Interfaces[1].VirtualIPAddress /root/.sacloud-api/conf/interfaces.json)
+VRRP_IPADDRESS=$(jq -r .Interfaces[1].VirtualIPAddress $SACLOUDAPI_HOME/conf/interfaces.json)
 VRRP_IPADDRESS_LEN=24
 VRRP_ID=$(echo $VRRP_IPADDRESS | cut -d. -f4)
 
@@ -277,7 +277,7 @@ global_defs {
 }
 
 vrrp_script chk_myscript {
-  script "/root/.sacloud-api/bin/is_running.sh"
+  script "$SACLOUDAPI_HOME/bin/is_running.sh"
   interval 5 # check every 5 seconds
   fall 2 # require 2 failures for KO
   rise 2 # require 2 successes for OK

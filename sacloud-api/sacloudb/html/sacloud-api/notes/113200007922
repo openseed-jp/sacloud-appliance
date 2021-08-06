@@ -1,0 +1,413 @@
+{
+  "Name": "開発環境 項目設定(@MariaDB-10.2, @MariaDB-10.3, @MariaDB-10.4) - is1y - 113200007922",
+  "Form": [
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/sort_buffer_size",
+      "label": "sort_buffer_size",
+      "options": {
+        "validator": "bytesizeunit",
+        "ex": "2097152",
+        "min": 1024,
+        "max": 18446744073709552000,
+        "maxlen": 20,
+        "text": "ソートを実行する各セッションは、この量のメモリを持つバッファを設定します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/max_connections",
+      "label": "max_connections",
+      "options": {
+        "ex": "100",
+        "min": 10,
+        "max": 1000000,
+        "maxlen": 6,
+        "integer": true,
+        "text": "同時クライアント接続の最大数を設定します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/query_cache_size",
+      "label": "query_cache_size",
+      "options": {
+        "validator": "bytesizeunit",
+        "ex": "512MB",
+        "min": 0,
+        "max": 18446744073709552000,
+        "maxlen": 20,
+        "text": "クエリキャッシュで使用可能なバイト単位のサイズを設定します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/query_cache_limit",
+      "label": "query_cache_limit",
+      "options": {
+        "validator": "bytesizeunit",
+        "ex": "16MB",
+        "min": 0,
+        "max": 4294967295,
+        "maxlen": 10,
+        "text": "これより大きい結果がクエリキャッシュに格納されないバイト単位のサイズを設定します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/query_cache_type",
+      "label": "query_cache_type",
+      "options": {
+        "ex": "0",
+        "min": 0,
+        "max": 2,
+        "maxlen": 1,
+        "integer": true,
+        "text": "クエリキャッシュタイプを設定します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/max_allowed_packet",
+      "label": "max_allowed_packet",
+      "options": {
+        "validator": "bytesizeunit",
+        "ex": "16MB",
+        "min": 1024,
+        "max": 1073741824,
+        "maxlen": 10,
+        "text": "サーバおよびクライアント間で転送可能なパケットのサイズを設定します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/version",
+      "label": "version",
+      "options": {
+        "ex": "16B",
+        "text": "ログなどに表示されるバージョン表記を設定します。",
+        "reboot": "static",
+        "type": "string"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/port",
+      "label": "port",
+      "options": {
+        "ex": "3306",
+        "text": "ポート番号",
+        "readonly": true,
+        "reboot": "static",
+        "placeholder": "$CLOUD_APPLIANCE_DATABASE_SERVICE_PORT",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "phpMyAdmin/conf.d/config.inc.php/Conf/port",
+      "label": "port",
+      "options": {
+        "ex": "3306",
+        "text": "ポート番号",
+        "readonly": true,
+        "reboot": "static",
+        "placeholder": "$CLOUD_APPLIANCE_DATABASE_SERVICE_PORT",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/log_error",
+      "label": "log_error",
+      "options": {
+        "ex": "/var/log/mariadb.log",
+        "text": "エラーログを指定します。",
+        "readonly": true,
+        "reboot": "static",
+        "type": "string"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/log_bin",
+      "label": "log_bin",
+      "options": {
+        "ex": "0",
+        "text": "バイナリロギングを有効にする",
+        "readonly": true,
+        "reboot": "static",
+        "type": "string"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/log_slave_updates",
+      "label": "log_slave_updates",
+      "options": {
+        "ex": "0",
+        "text": "スレーブでバイナリロギングを有効にする",
+        "readonly": true,
+        "reboot": "static",
+        "type": "string"
+      }
+    },
+    {
+      "type": "radios",
+      "name": "MariaDB/server.cnf/mysqld/event_scheduler",
+      "label": "event_scheduler",
+      "options": {
+        "default": "",
+        "text": "イベントスケジュールの有効無効を設定します。",
+        "reboot": "dynamic",
+        "type": "string"
+      },
+      "items": [
+        [
+          "ON",
+          "ON"
+        ],
+        [
+          "OFF",
+          "OFF"
+        ]
+      ]
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/query_alloc_block_size",
+      "label": "query_alloc_block_size",
+      "options": {
+        "validator": "bytesizeunit",
+        "ex": "8192",
+        "min": 8192,
+        "max": 4294967295,
+        "maxlen": 10,
+        "text": "ステートメントの解析および実行中に作成されるオブジェクトに対して割り当てられるメモリーブロックの割り当てサイズを設定します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/query_cache_min_res_unit",
+      "label": "query_cache_min_res_unit",
+      "options": {
+        "validator": "bytesizeunit",
+        "ex": "4KB",
+        "min": 0,
+        "max": 4294967295,
+        "maxlen": 10,
+        "text": "クエリーキャッシュによって割り当てられたブロックの最小サイズ(バイト単位)を設定します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "radios",
+      "name": "MariaDB/server.cnf/mysqld/query_cache_wlock_invalidate",
+      "label": "query_cache_wlock_invalidate",
+      "options": {
+        "default": "",
+        "text": "書込みロック獲得時にロックしたテーブルに関するクエリキャッシュを無効にするかどうか設定します。",
+        "reboot": "dynamic",
+        "type": "string"
+      },
+      "items": [
+        [
+          "ON",
+          "ON"
+        ],
+        [
+          "OFF",
+          "OFF"
+        ]
+      ]
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/query_prealloc_size",
+      "label": "query_prealloc_size",
+      "options": {
+        "validator": "bytesizeunit",
+        "ex": "8192",
+        "min": 8192,
+        "max": 4294967295,
+        "maxlen": 10,
+        "text": "ステートメントの解析および実行に使用される永続バッファーのサイズを設定します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "select",
+      "name": "MariaDB/server.cnf/mysqld/log_warnings",
+      "label": "log_warnings",
+      "options": {
+        "ex": "2",
+        "min": 0,
+        "max": 4294967295,
+        "maxlen": 10,
+        "text": "「Aborted connection...」などの警告をエラーログに出力します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      },
+      "items": [
+        [
+          0,
+          "0: None"
+        ],
+        [
+          1,
+          "1: Event Information"
+        ],
+        [
+          2,
+          "2: Errors"
+        ],
+        [
+          3,
+          "3: Warnings"
+        ],
+        [
+          4,
+          "4: Connection Aborted"
+        ],
+        [
+          9,
+          "9: Plugin Information"
+        ]
+      ]
+    },
+    {
+      "type": "radios",
+      "name": "MariaDB/server.cnf/mysqld/slow_query_log",
+      "label": "slow_query_log",
+      "options": {
+        "default": "",
+        "text": "スロークエリの有効無効を設定します。",
+        "reboot": "dynamic",
+        "type": "string"
+      },
+      "items": [
+        [
+          "ON",
+          "ON"
+        ],
+        [
+          "OFF",
+          "OFF"
+        ]
+      ]
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/long_query_time",
+      "label": "long_query_time",
+      "options": {
+        "ex": "10",
+        "min": 0.1,
+        "max": 86400,
+        "maxlen": 11,
+        "text": "ログに記録されるクエリの最短実行時間の値をミリ秒単位で設定できます。",
+        "reboot": "dynamic",
+        "regexp": "(?=^([1-9][0-9]+|[0-9])(\\.[0-9]{1,6}){0,1}$)",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/slow_query_log_file",
+      "label": "slow_query_log_file",
+      "options": {
+        "ex": "/var/log/mariadb/slow-query.log",
+        "text": "スロークエリログの出力先を設定設定します。",
+        "readonly": true,
+        "reboot": "dynamic",
+        "placeholder": "/var/log/mariadb/slow-query.log",
+        "type": "string"
+      }
+    },
+    {
+      "type": "select",
+      "name": "MariaDB/server.cnf/mysqld/sql_mode",
+      "label": "sql_mode",
+      "options": {
+        "default": "",
+        "text": "SQL モードを設定します。",
+        "reboot": "dynamic",
+        "type": "string"
+      },
+      "items": [
+        [
+          "",
+          "(デフォルト値)"
+        ],
+        [
+          " ",
+          "〜10.1.6(初期設定:なし)"
+        ],
+        [
+          "NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+          "10.1.7〜10.2.3(初期設定:NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION)"
+        ],
+        [
+          "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+          "10.2.4〜(初期設定:STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION)"
+        ]
+      ]
+    },
+    {
+      "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/innodb_buffer_pool_size",
+      "label": "innodb_buffer_pool_size",
+      "options": {
+        "validator": "bytesizeunit",
+        "ex": "2097152",
+        "min": 5242880,
+        "max": 9223372036854776000,
+        "maxlen": 19,
+        "text": "バッファプールサイズのために使用するメモリ量を設定します。妥当な初期値はシステムメモリの80%です。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "radios",
+      "name": "MariaDB/server.cnf/mysqld/tmpdir",
+      "label": "tmpdir",
+      "options": {
+        "default": "/tmp",
+        "text": "tmpdir の指定\n　システム領域: テンポラリファイルが大きくなった場合、動作が不安定になる場合があります.\n　データ領域: ご利用のデータ領域を利用します.\n　バックアップ領域: HDDのため、動作が遅くなります.",
+        "reboot": "static",
+        "type": "string"
+      },
+      "items": [
+        [
+          "/tmp",
+          "システム領域"
+        ],
+        [
+          "/export/tmp",
+          "データ領域"
+        ],
+        [
+          "/backup/tmp",
+          "バックアップ領域"
+        ]
+      ]
+    }
+  ]
+}

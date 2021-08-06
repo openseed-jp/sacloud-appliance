@@ -202,7 +202,7 @@ usermod -aG postgres $SACLOUD_ADMIN_USER
 
 # 暫定：アーカイブ作成時に変更予定
 chown -R root:root /usr/pgpoolAdmin-4*
-chown -R apache:apache /usr/pgpoolAdmin-4*/{templates_c,conf/pgmgt.conf.php} 
+chown -R $SACLOUD_ADMIN_USER:$SACLOUD_ADMIN_USER /usr/pgpoolAdmin-4*/{templates_c,conf/pgmgt.conf.php} 
 
 : =====================================================
 :  modify pool_hba.conf : $0:$LINENO
@@ -250,9 +250,6 @@ php -r "echo '"$SACLOUD_ADMIN_USER":'.md5('"$SACLOUD_ADMIN_PASS"'),PHP_EOL;" >> 
 
 # apache からの参照権限が必要
 # /usr/pgpoolAdmin-4.1.0/conf にコピーしてもいいのかな
-cp -f  /root/.pcppass /usr/share/httpd/.
-chown apache:apache /etc/pgpool-II/pcp.conf /usr/share/httpd/.pcppass 
-
 cp -f  /root/.pcppass /home/$SACLOUD_ADMIN_USER/.
 chown $SACLOUD_ADMIN_USER:$SACLOUD_ADMIN_USER /home/$SACLOUD_ADMIN_USER/.pcppass 
 
@@ -263,7 +260,7 @@ sacloud_func_file_cleanup /etc/keepalived/keepalived.conf
 VRRP_STATE=backup
 VRRP_PRIORITY=100
 VRRP_INTERFACE=eth1
-VRRP_IPADDRESS=$(jq -r .Interfaces[1].VirtualIPAddress /root/.sacloud-api/conf/interfaces.json)
+VRRP_IPADDRESS=$(jq -r .Interfaces[1].VirtualIPAddress $SACLOUDAPI_HOME/conf/interfaces.json)
 VRRP_IPADDRESS_LEN=24
 VRRP_ID=$(echo $VRRP_IPADDRESS | cut -d. -f4)
 
@@ -274,7 +271,7 @@ global_defs {
 }
 
 vrrp_script chk_myscript {
-  script "/root/.sacloud-api/bin/is_running.sh"
+  script "$SACLOUDAPI_HOME/bin/is_running.sh"
   interval 5 # check every 5 seconds
   fall 2 # require 2 failures for KO
   rise 2 # require 2 successes for OK

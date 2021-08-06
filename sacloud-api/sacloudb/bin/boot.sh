@@ -8,6 +8,7 @@ cd $SACLOUDB_MODULE_BASE
 set -x -e -o pipefail -o errexit
 
 
+$SACLOUDAPI_HOME/bin/update-modules.sh
 $SACLOUDB_MODULE_BASE/bin/update-monitoring.sh
 
 if [ "$SACLOUDB_DATABASE_NAME" = "MariaDB" ]; then
@@ -64,6 +65,13 @@ fi
 apachectl restart
 
 # cron 登録
-$SACLOUDB_MODULE_BASE/bin/cron5min.sh
+cat <<_EOL > /var/spool/cron/root
+* * * * *   $SACLOUDB_MODULE_BASE/bin/cron1min.sh >/dev/null 2>&1
+*/5 * * * * $SACLOUDB_MODULE_BASE/bin/cron5min.sh >/dev/null 2>&1
+_EOL
+chmod 600 /var/spool/cron/root
+chown root:root /var/spool/cron/root
+systemctl reload crond
+
 
 echo "boot.sh done!"

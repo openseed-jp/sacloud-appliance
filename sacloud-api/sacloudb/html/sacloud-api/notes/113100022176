@@ -1,0 +1,184 @@
+{
+  "Name": "開発環境 項目設定(@postgres-11) - is1y - 113100022176",
+  "Form": [
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/wal_buffers",
+      "label": "wal_buffers",
+      "options": {
+        "ex": "512",
+        "min": -1,
+        "max": 262143,
+        "maxlen": 6,
+        "text": "WAL用の共有メモリ内のディスクページバッファの数を設定します。",
+        "reboot": "static",
+        "type": "numeric",
+        "integer": true
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/work_mem",
+      "label": "work_mem",
+      "options": {
+        "ex": "4096",
+        "min": 64,
+        "max": 2147483647,
+        "maxlen": 10,
+        "text": "クエリワークスペースに使用するメモリの最大量を設定します。",
+        "reboot": "dynamic",
+        "type": "numeric",
+        "integer": true
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/maintenance_work_mem",
+      "label": "maintenance_work_mem",
+      "options": {
+        "ex": "65536",
+        "min": 1024,
+        "max": 2147483647,
+        "maxlen": 10,
+        "text": "メンテナンスオペレーションに使用するメモリの最大量を設定します。",
+        "reboot": "dynamic",
+        "type": "numeric",
+        "integer": true
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/effective_cache_size",
+      "label": "effective_cache_size",
+      "options": {
+        "ex": "524288",
+        "min": 1,
+        "max": 2147483647,
+        "maxlen": 10,
+        "text": "ディスクキャッシュのサイズに関するプランナーの予測を設定します。",
+        "reboot": "dynamic",
+        "type": "numeric",
+        "integer": true
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/random_page_cost",
+      "label": "random_page_cost",
+      "options": {
+        "ex": "4",
+        "min": 1,
+        "max": 4,
+        "maxlen": 10,
+        "text": "非連続的に取得されたディスクページのコストに対するプランナーの見積もりを設定します。",
+        "reboot": "dynamic",
+        "regexp": "^[0-9¥¥.]*$",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/max_connections",
+      "label": "max_connections",
+      "options": {
+        "ex": "100",
+        "min": 1,
+        "max": 262143,
+        "maxlen": 6,
+        "integer": true,
+        "text": "同時接続の最大数を設定します。",
+        "reboot": "static",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/port",
+      "label": "port",
+      "options": {
+        "ex": "5432",
+        "text": "ポート番号",
+        "readonly": true,
+        "reboot": "static",
+        "placeholder": "$CLOUD_APPLIANCE_DATABASE_SERVICE_PORT",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "phpPgAdmin/conf.d/config.inc.php/Conf/port",
+      "label": "port",
+      "options": {
+        "ex": "5432",
+        "text": "ポート番号",
+        "readonly": true,
+        "reboot": "static",
+        "placeholder": "$CLOUD_APPLIANCE_DATABASE_SERVICE_PORT",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/max_wal_senders",
+      "label": "max_wal_senders",
+      "options": {
+        "ex": "1",
+        "text": "複数のスタンバイサーバ、またはストリーミングを基盤とする予備（バックアップ）クライアントからの同時接続を受ける接続最大値を設定します。",
+        "readonly": true,
+        "reboot": "static",
+        "type": "numeric"
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/hot_standby",
+      "label": "hot_standby",
+      "options": {
+        "ex": "on",
+        "text": "スタンバイ中も参照を可能にする(スレーブの設定)",
+        "readonly": true,
+        "reboot": "static",
+        "type": "string"
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/listen_addresses",
+      "label": "listen_addresses",
+      "options": {
+        "ex": "*",
+        "text": "クライアントアプリケーションからの接続をサーバが監視する TCP/IP アドレスを指定します。",
+        "readonly": true,
+        "reboot": "static",
+        "type": "string"
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/wal_level",
+      "label": "wal_level",
+      "options": {
+        "ex": "*",
+        "text": "wal_levelはどれだけの情報がWALに書かれるかを決定します。",
+        "readonly": true,
+        "reboot": "static",
+        "type": "string"
+      }
+    },
+    {
+      "type": "text",
+      "name": "postgres/postgresql.conf/shared_buffers",
+      "label": "shared_buffers",
+      "options": {
+        "ex": "16",
+        "min": 16,
+        "max": 1073741823,
+        "maxlen": 10,
+        "text": "共有メモリバッファのために使用するメモリ量を設定します。妥当な初期値はシステムメモリの25%です。",
+        "reboot": "static",
+        "type": "numeric",
+        "integer": true
+      }
+    }
+  ]
+}

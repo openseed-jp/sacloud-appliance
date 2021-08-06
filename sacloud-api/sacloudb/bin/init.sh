@@ -4,6 +4,12 @@ cd $(dirname $0)/..
 . .env
 set -x -e -o pipefail -o errexit
 
+
+# TODO 暫定
+yum install -f nfs-utils quota
+
+
+
 cat <<'_EOF' > $SACLOUDAPI_HOME/bin/update-firewalld-ext.sh
 #!/bin/bash
 
@@ -44,7 +50,7 @@ cd $(dirname $0)
 . ../.env
 
 cat <<_EOF > /etc/hosts
-# edit by /root/.sacloud-api/bin/update-interfaces-ext.sh
+# edit by $SACLOUDAPI_HOME/bin/update-interfaces-ext.sh
 
 127.0.0.1   localhost
 
@@ -61,16 +67,13 @@ $SACLOUDAPI_HOME/bin/update-interfaces-ext.sh
 
 # クオータ設定
 if [ ! -f /aquota.user ]; then
-    if ! type quotacheck ; then
-        yum -y install quota
-    fi
     if ! grep usrjquota=aquota.user /etc/fstab >/dev/null ; then
         sed -i /etc/fstab -e 's|/ *ext4 *defaults *1 1|/                       ext4    defaults,usrjquota=aquota.user,jqfmt=vfsv0       1 1|g'
         reboot
     fi
 
-    QUOTA_SIZE=$(jq ".Disks[0].SizeMB - 10240" /root/.sacloud-api/server.json)
-    QUOTA_SIZE=$(jq ".Disks[1].SizeMB //$QUOTA_SIZE" /root/.sacloud-api/server.json)
+    QUOTA_SIZE=$(jq ".Disks[0].SizeMB - 10240" $SACLOUDAPI_HOME/server.json)
+    QUOTA_SIZE=$(jq ".Disks[1].SizeMB //$QUOTA_SIZE" $SACLOUDAPI_HOME/server.json)
     QUOTA_SIZE=$(expr $QUOTA_SIZE '*' 1000 / 1024)
 
     QUOTA_GRACE=$(expr 86400 '*' 3)
@@ -87,6 +90,10 @@ if [ ! -f /aquota.user ]; then
 fi
 
 if [ ! -f $SACLOUDB_MODULE_BASE/bin/init.done ]; then
+    # Apache の実行ユーザを sacloud-admin に変更
+    sed -i /etc/httpd/conf/httpd.conf \
+        -e 's/^User apache/User sacloud-admin/g' \
+        -e 's/^Group apache/Group sacloud-admin/g'
 
     # TODO: 自己署名ファイルの更新
     openssl req -x509 -sha256 -nodes -days 36500 -newkey rsa:2048 -subj /CN=localhost -keyout /etc/pki/tls/private/localhost.key -out /etc/pki/tls/certs/localhost.crt

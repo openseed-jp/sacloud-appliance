@@ -116,9 +116,6 @@ chown -R postgres:postgres /var/lib/pgsql
 cp -f /var/lib/pgsql/.pgpass /home/$SACLOUD_ADMIN_USER/.
 chown -R $SACLOUD_ADMIN_USER:$SACLOUD_ADMIN_USER /home/$SACLOUD_ADMIN_USER
 
-cp -f /var/lib/pgsql/.pgpass /usr/share/httpd/.pgpass 
-chown -R apache:apache /usr/share/httpd/.pgpass
-
 : 再起動 $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
 apachectl restart
 
@@ -221,7 +218,7 @@ python3 /usr/pgadmin4/web/setup.py \
 	--load-servers /var/lib/pgadmin/servers.json
 
 : #権限変更
-chown -R apache:apache /var/lib/pgadmin /var/log/pgadmin
+chown -R $SACLOUD_ADMIN_USER:$SACLOUD_ADMIN_USER /var/lib/pgadmin /var/log/pgadmin
 
 : 再起動 $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
 apachectl restart

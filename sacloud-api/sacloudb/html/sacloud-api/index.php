@@ -9,89 +9,112 @@ use Slim\Factory\AppFactory;
 $app = AppFactory::create();
 
 $app->group('/external-api', function (Group $api) {
-    $api->get('/config/authorized_keys', function (Request $request, Response $response, $args) {
-        $text = file_get_contents("/home/sacloud-admin/.ssh/authorized_keys");
-        $user = getenv("SACLOUDB_ADMIN_USER") . "@";
-        $text = array_filter(explode("\n", $text), function($line) use ($user) { return strpos($line, $user) !== false;});
-        $response->getBody()->write(implode("\n", $text));
-        return $response->withHeader('Content-Type', 'text/plain')->withStatus(200);
-    });
-
     $api->get('/ping', function (Request $request, Response $response, $args) {
         list($payload, $status, $headers) = maxscale_status();
 
         return json_response($response, 200, $payload);
     });
-    $api->get('/check_vip_connection', function (Request $request, Response $response, $args) {
-        list($payload, $status, $headers) = bbb();
-
-        return json_response($response, 200, $payload);
-    });
-
 });
 
 $app->group('/sacloud-api', function (Group $api) {
     $api->get('/download-log/{file}.log', function (Request $request, Response $response, $args) {
-        $engine = get_appliance_dbconf("DatabaseName");
-        // TODO ログ取得
-        $file = $args["file"];
-        if($engine == "MariaDB") {
-            $file = "/var/lib/mysql/" . basename($file);
-        } else if($engine == "postgres") {
-            // FIXME
-            $PGDATA = "/var/lib/pgsql/13/data";
-            $file = "$PGDATA/log/" . basename($file);
-        }
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
 
-        $payload = [
-            "Log" => file_get_contents($file),
-            "FileName" => $file
-        ];
+        $payload = $util->getLogFile($args["file"]);
         return json_response($response, 200, $payload);
     });
     $api->put('/service-ctrl/restart', function (Request $request, Response $response, $args) {
-        $engine = get_appliance_dbconf("DatabaseName");
-        list($payload, $status, $headers) = status_setting_response($engine);
-        // TODO 再起動
-        $payload = ["Accepted" => true];
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
 
-        return json_response($response, 202, $payload);
+        list($payload, $status, $headers) = $util->status_setting_response();
+
+        // TODO 再起動
+        $command = "ssh root@localhost /root/.sacloud-api/sacloudb/bin/execute-restart-database.sh";
+        $result = exec($command, $output, $result_code);
+        $payload = [
+            "Accepted" => true,
+            "vip_hostname" => $util->get_vip_hostname(),
+            "hostname" => gethostname(),
+            "aa1" =>  $result,
+            "aa2" =>  $output,
+        ];        
+        $result = exec($command, $output, $result_code);
+
+        return json_response($response, 200, $payload);
     });
     $api->put('/config', function (Request $request, Response $response, $args) {
-        $engine = get_appliance_dbconf("DatabaseName");
-        list($payload, $status, $headers) = status_setting_response($engine);
-        // TODO 反映
-        $payload = ["Accepted" => true];
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
 
+        //ssh root@localhost /root/.sacloud-api/sacloudb/bin/restart-database.sh
+        
+
+
+        list($payload, $status, $headers) = $util->status_setting_response();
+        // TODO 反映
+        $payload = [
+            "Accepted" => true,
+            "vip_hostname" => $util->get_vip_hostname(),
+            "hostname" => gethostname(),
+            "aa" => getenv("SACLOUDB_VIP_ADDRESS"),
+        ];
         return json_response($response, 202, $payload);
     });
     $api->get('/status', function (Request $request, Response $response, $args) {
-        $engine = get_appliance_dbconf("DatabaseName");
-        list($payload, $status, $headers) = status_setting_response($engine);
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
+
+        list($payload, $status, $headers) = $util->status_setting_response();
+
+        $command = "ssh root@localhost /root/.sacloud-api/sacloudb/bin/execute-update-config.sh";
+        $result = exec($command, $output, $result_code);
+        $payload = [
+            "Accepted" => true,
+            "vip_hostname" => $util->get_vip_hostname(),
+            "hostname" => gethostname(),
+            "aa1" =>  $result,
+            "aa2" =>  $output,
+        ];        
+        $result = exec($command, $output, $result_code);
 
         return json_response($response, 200, $payload);
     });
     $api->get('/parameter', function (Request $request, Response $response, $args) {
-        $payload = settings_response("Parameter");
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
+
+        $payload = $util->settings_response("Parameter");
+
+        $param = json_decode(file_get_contents("/etc/my.cnf.d/zz_sacloudb.json"), true);
+        $payload["Parameter"] = $param["Parameter"];
 
         $text = file_get_contents(__DIR__ . "/notes/113200007922");
         $text = str_replace('$CLOUD_APPLIANCE_DATABASE_SERVICE_PORT', 3306, $text);
         $json = json_decode($text, true);
 
-        $json["Form"] = array_values(array_filter($json["Form"], function($item) {
+        $form = [];
+        foreach($json["Form"] as $item) {
             $a = explode("/", $item["name"]);
-            if($a[0] !== "MariaDB") return false;
+            if($a[0] !== "MariaDB") continue;
             $name = array_pop($a);
-            if($name === "port") return false;
+            if($name === "port") continue;
 
-            return ($name === "max_connections");
-        }));
-        $payload["Remark"]["Form"] = $json["Form"];
+            if(isset($param["Parameter"]["Attr"][$item["name"]])) {
+                $item["options"]["default"] = $param["Parameter"]["Attr"][$item["name"]];
+            }
+            if($name === "max_connections") $form[] = $item;
+        }
+        $payload["Remark"]["Form"] = $form;
         return json_response($response, 200, $payload);
     });
     $api->put('/parameter', function (Request $request, Response $response, $args) {
-        $data = sacloudb_parsedBody($request->getBody()->getContents());
-        $root = sacloudb_parsedAttr($data,  "Parameter", "/");
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
+
+        $data = $util->sacloudb_parsedBody($request->getBody()->getContents());
+        $root = $util->sacloudb_parsedAttr($data,  "Parameter", "/");
         $sections = [
                 "mysqld" => [],
         ];
@@ -116,12 +139,18 @@ $app->group('/sacloud-api', function (Group $api) {
         return json_response($response, 200, $payload);
     });
     $api->get('/plugin', function (Request $request, Response $response, $args) {
-        $payload = settings_response("Plugin");
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
+
+        $payload = $util->settings_response("Plugin");
 
         return json_response($response, 200, $payload);
     });
     $api->get('/syslog', function (Request $request, Response $response, $args) {
-        $payload = settings_response("Syslog");
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
+
+        $payload = $util->settings_response("Syslog");
 
         return json_response($response, 200, $payload);
     });
@@ -136,56 +165,148 @@ try {
     print json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 }
 
-function sacloudb_parsedAttr($data, $category, $sep) {
-    $root = [];
-    foreach($data[$category]["Attr"] as $key => $value) {
-        $a = explode($sep, $key);
-        $name = array_pop($a);
-        $cur = &$root;
-        foreach($a as $k) {
-            if(!isset($cur[$k])) $cur[$k] = [];
-            $cur = &$cur[$k];
-        }
-        $cur[$name] = $value;
-
-    }
-    return $root;
-}
-
-
-function sacloudb_parsedBody($contents) {
-    if(substr($contents,0, 5) === "data=") {
-        parse_str($contents, $out);
-        return json_decode($out["data"], true);
-    } else {
-        return json_decode($contents, true);
-    }
-}
-
 function json_response($response, $code, $payload) {
     $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $response->getBody()->write($json);
     return $response->withHeader('Content-Type', 'application/json')->withStatus($code);
 }
 
-function status_setting_response($databaseType) {
-    $logs = [
-        [
-            "group" => "systemctl",
-            "name" => "systemctl",
-            "data" => file_get_contents("/tmp/.status/systemctl.txt"),
-        ],
-    ];
+class WebException extends Exception {
 
-    if($databaseType == "MariaDB") {
+}
+
+class EngineUtil {
+
+    public static function getEngineInstance() {
+        $name = self::get_appliance_dbconf("DatabaseName");
+        if($name == "MariaDB") return new MariaDBEngineUtil();
+        if($name == "postgres") return new PostgresDBEngineUtil();
+        throw new WebException();
+
+    }
+    public static function get_appliance_dbconf($key = null) {
+        $json = json_decode(file_get_contents("/tmp/.status/appliance.json"), true);
+        $dbconf = $json["Appliance"]["Remark"]["DBConf"];
+        if($key == null) {
+                return $dbconf;
+        } else if(isset($dbconf["Common"][$key])) {
+                return $dbconf["Common"][$key];
+        } else {
+                throw new Exception();
+        }
+    }
+
+    function sacloudb_parsedBody($contents) {
+        if(substr($contents,0, 5) === "data=") {
+            parse_str($contents, $out);
+            return json_decode($out["data"], true);
+        } else {
+            return json_decode($contents, true);
+        }
+    }    
+
+    function sacloudb_parsedAttr($data, $category, $sep) {
+        $root = [];
+        foreach($data[$category]["Attr"] as $key => $value) {
+            $a = explode($sep, $key);
+            $name = array_pop($a);
+            $cur = &$root;
+            foreach($a as $k) {
+                if(!isset($cur[$k])) $cur[$k] = [];
+                $cur = &$cur[$k];
+            }
+            $cur[$name] = $value;
+    
+        }
+        return $root;
+    }
+    
+    function status_setting_response() {
+        $databaseType = self::get_appliance_dbconf("DatabaseName");
+        $logs = [
+            [
+                "group" => "systemctl",
+                "name" => "systemctl",
+                "data" => file_get_contents("/tmp/.status/systemctl.txt"),
+            ],
+        ];
+    
+        $result = [
+            "version" => [
+                "lastmodified" => "2021-07-01 00:00:00 +0900",
+                "commithash" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "status" => "latest",
+                "tag" => "2.0",
+                "expire" => "",
+            ],
+            "$databaseType" => [
+                "status" => "running"
+            ],
+            "log" => array_values(array_merge ($logs, $this->getLogs())),
+            "backup" => ["history" => []],
+        ];
+    
+        return [$result, [], []];
+    }
+
+    function settings_response($name, $config = [], $settings = [], $form = []) {
+        $payload = [];
+        $payload[$name] = $config;
+        $payload["Remark"] = [
+            "Settings" => $settings,
+            "Form" => $form,
+        ];
+        return $payload;
+    }
+
+    public function has_vip() {
+        return $this->get_vip_hostname() == gethostname();
+    }
+
+    public function getLogs() { return [];}
+    public function getLogFile($name) { return [];}
+    public function get_vip_hostname() { return [];}
+
+}
+
+class MariaDBEngineUtil extends EngineUtil{
+    function get_vip_hostname(){
+        // ドライバ呼び出しを使用して MySQL データベースに接続します
+        $dsn = "mysql:dbname=mysql;host=" . getenv("SACLOUDB_VIP_ADDRESS");
+        $user = getenv("SACLOUDB_ADMIN_USER");
+        $password = getenv("SACLOUDB_ADMIN_PASS");
+        try {
+            $dbh = new PDO($dsn, $user, $password);
+            $stmt = $dbh->query("SHOW VARIABLES WHERE Variable_name = 'hostname';");
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $result ? $result["Value"] : null;
+        } catch (PDOException $e) {
+            return [["status" => "500 Server Internal Error", "message" => $e->getMessage() ]];
+        }
+    }
+    function getLogs() {
+        $logs = [];
         $logs[] = [
             "group" => "mariadb",
             "name" => "error.log",
             "data" => "..." . mb_substr(file_get_contents("/var/lib/mysql/error.log"), -1000),
             "size" => filesize("/var/lib/mysql/error.log"),
         ];
-    } else if($databaseType == "postgres") {
+        return $logs;
+    }
+    function getLogFile($name){
+        $file = "/var/lib/mysql/" . basename($name);
+        return [
+            "Log" => file_get_contents($file),
+            "FileName" => $file
+        ];
+    }
+}
+
+class PostgresDBEngineUtil extends EngineUtil {
+    function getLogs() {
         // FIXME
+        $logs = [];
         $PGDATA = "/var/lib/pgsql/13/data";
         $files = glob("$PGDATA/log/postgresql-*.log");
         usort($files, function($a, $b) {return -(filemtime($b) - filemtime($a));});
@@ -199,36 +320,18 @@ function status_setting_response($databaseType) {
                 ];
             }
         }
+        return $logs;
     }
+    function getLogFile($name){
+        // TODO ログ取得
+        $PGDATA = "/var/lib/pgsql/13/data";
+        $file = "$PGDATA/log/" . basename($name);
 
-    $result = [
-        "version" => [
-            "lastmodified" => "2021-07-01 00:00:00 +0900",
-            "commithash" => "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "status" => "latest",
-            "tag" => "2.0",
-            "expire" => "",
-        ],
-        "$databaseType" => [
-            "status" => "running"
-        ],
-        "log" => $logs,
-        "backup" => ["history" => []],
-    ];
-
-
-
-
-    return [$result, [], []];
-}
-function settings_response($name, $config = [], $settings = [], $form = []) {
-    $payload = [];
-    $payload[$name] = $config;
-    $payload["Remark"] = [
-        "Settings" => $settings,
-        "Form" => $form,
-    ];
-    return $payload;
+        return [
+            "Log" => file_get_contents($file),
+            "FileName" => $file
+        ];
+    }
 }
 
 function maxscale_status() {
@@ -278,31 +381,4 @@ function maxscale_status() {
     $result["hostname"] = gethostname();
     $result["_detail"] = $services;
     return [$result, substr($result['status'], 3)];
-}
-
-function ping_vip_connection(){
-    try {
-        // ドライバ呼び出しを使用して MySQL データベースに接続します
-        $dsn = "mysql:dbname=mysql;host=" . getenv("SACLOUDB_VIP_ADDRESS");
-        $user = getenv("SACLOUDB_ADMIN_USER");
-        $password = getenv("SACLOUDB_ADMIN_PASS");
-
-        $dbh = new PDO($dsn, $user, $password);
-        return [["status" => "200 Ok", "message" => "Ok" ]];
-    } catch (PDOException $e) {
-        return [["status" => "500 Server Internal Error", "message" => $e->getMessage() ]];
-    }
-}
-
-
-function get_appliance_dbconf($key = null) {
-    $json = json_decode(file_get_contents("/tmp/.status/appliance.json"), true);
-    $dbconf = $json["Appliance"]["Remark"]["DBConf"];
-    if($key == null) {
-            return $dbconf;
-    } else if(isset($dbconf["Common"][$key])) {
-            return $dbconf["Common"][$key];
-    } else {
-            throw new Exception();
-    }
 }

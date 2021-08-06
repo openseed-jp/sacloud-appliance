@@ -5,9 +5,10 @@ cd $(dirname $0)/..
 
 set -x -e -o pipefail -o errexit
 
-usermod -aG mysql apache
-usermod -aG postgres apache
-usermod -aG $SACLOUD_ADMIN_USER apache
+usermod -aG apache $SACLOUD_ADMIN_USER
+usermod -aG mysql $SACLOUD_ADMIN_USER
+usermod -aG postgres $SACLOUD_ADMIN_USER
+usermod -aG $SACLOUD_ADMIN_USER $SACLOUD_ADMIN_USER
 cp -f /root/.ssh/id_rsa_admin /home/$SACLOUD_ADMIN_USER/.ssh/id_rsa
 cp -f /root/.ssh/id_rsa_admin.pub /home/$SACLOUD_ADMIN_USER/.ssh/id_rsa.pub
 cp -f /root/.ssh/authorized_keys /home/$SACLOUD_ADMIN_USER/.ssh/authorized_keys
@@ -21,12 +22,15 @@ if [ ! -d $SACLOUDB_MODULE_BASE/html/sacloud-api/vendor ]; then
     export COMPOSER_HOME=/root
     COMPOSER_ALLOW_SUPERUSER=1 composer update
 fi
-cp -fr /root/.sacloud-api/sacloudb/html /home/$SACLOUD_ADMIN_USER/.
+cp -fr $SACLOUDAPI_HOME/sacloudb/html /home/$SACLOUD_ADMIN_USER/.
 cat <<_EOF > /home/$SACLOUD_ADMIN_USER/html/sacloud-api/.htaccess
 
 SetEnv SACLOUDB_ADMIN_USER $SACLOUDB_ADMIN_USER
 SetEnv SACLOUDB_ADMIN_PASS $SACLOUDB_ADMIN_PASS
 SetEnv SACLOUDB_VIP_ADDRESS $SERVER_VIP
+SetEnv SACLOUDB_LOCAL_ADDRESS $SERVER_LOCALIP
+SetEnv SACLOUDB_PEER_ADDRESS $SERVER_PEER_LOCALIP
+
 
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
@@ -119,5 +123,7 @@ apachectl restart
 
 : # gotty
 if which gotty >/dev/null ; then
-    gotty --address 127.0.0.1 --port 8011 --max-connection 3 --title-format $(hostname) --permit-arguments tail 2> /tmp/gotty.log &
+    if ! ps -ef | grep  "[-]port 8011" >/dev/null 2>&1 ; then
+        gotty --address 127.0.0.1 --port 8011 --max-connection 3 --title-format $(hostname) --permit-arguments tail 2>> /tmp/gotty.log &
+    fi
 fi
