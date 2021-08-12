@@ -26,64 +26,49 @@ $app->group('/sacloud-api', function (Group $api) {
     });
     $api->put('/service-ctrl/restart', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
-        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
+        if(!$util->has_vip()) return $util->response_not_primary($response);
 
         list($payload, $status, $headers) = $util->status_setting_response();
 
         // TODO 再起動
-        $command = "ssh root@localhost /root/.sacloud-api/sacloudb/bin/execute-restart-database.sh";
-        $result = exec($command, $output, $result_code);
+        list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/execute-restart-database.sh");
         $payload = [
             "Accepted" => true,
             "vip_hostname" => $util->get_vip_hostname(),
             "hostname" => gethostname(),
             "aa1" =>  $result,
-            "aa2" =>  $output,
-        ];        
-        $result = exec($command, $output, $result_code);
+            "aa2" =>  $exit_code,
+        ];
 
         return json_response($response, 200, $payload);
     });
     $api->put('/config', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
-        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
-
-        //ssh root@localhost /root/.sacloud-api/sacloudb/bin/restart-database.sh
-        
-
-
         list($payload, $status, $headers) = $util->status_setting_response();
-        // TODO 反映
-        $payload = [
-            "Accepted" => true,
-            "vip_hostname" => $util->get_vip_hostname(),
-            "hostname" => gethostname(),
-            "aa" => getenv("SACLOUDB_VIP_ADDRESS"),
-        ];
-        return json_response($response, 202, $payload);
+        list($result, $exit_code, $http_status) = $util->run_command("bin/update-config.sh");
+        return json_response($response, 302, $payload);
     });
     $api->get('/status', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
-        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
+        if(!$util->has_vip()) return $util->response_not_primary($response);
 
         list($payload, $status, $headers) = $util->status_setting_response();
 
         $command = "ssh root@localhost /root/.sacloud-api/sacloudb/bin/execute-update-config.sh";
         $result = exec($command, $output, $result_code);
-        $payload = [
+        $_payload = [
             "Accepted" => true,
             "vip_hostname" => $util->get_vip_hostname(),
             "hostname" => gethostname(),
             "aa1" =>  $result,
             "aa2" =>  $output,
-        ];        
-        $result = exec($command, $output, $result_code);
+        ];
 
         return json_response($response, 200, $payload);
     });
     $api->get('/parameter', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
-        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
+        if(!$util->has_vip()) return $util->response_not_primary($response);
 
         $payload = $util->settings_response("Parameter");
 
@@ -140,7 +125,7 @@ $app->group('/sacloud-api', function (Group $api) {
     });
     $api->get('/plugin', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
-        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
+        if(!$util->has_vip()) return $util->response_not_primary($response);
 
         $payload = $util->settings_response("Plugin");
 
@@ -148,10 +133,36 @@ $app->group('/sacloud-api', function (Group $api) {
     });
     $api->get('/syslog', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
-        if(!$util->has_vip()) return json_response($response, 302, ["Message" => "is not primary"]);
+        if(!$util->has_vip()) return $util->response_not_primary($response);
 
         $payload = $util->settings_response("Syslog");
 
+        return json_response($response, 200, $payload);
+    });
+    $api->get('/action/history', function (Request $request, Response $response, $args) {
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return $util->response_not_primary($response);
+
+        list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/execute-list-backup.sh");
+        $payload = [
+            "Success" => true,
+            "backup" => ["hisotry" => $result["files"]],
+        ];
+
+        return json_response($response, 200, $payload);
+    });
+
+    $api->post('/action/history', function (Request $request, Response $response, $args) {
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return $util->response_not_primary($response);
+
+        $payload = $util->settings_response("backup");
+        list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/execute-dump-backup.sh");
+        if ($exit_code != 0 && $result) return json_response($response, $http_status, $result);
+        if ($exit_code != 0) throw new WebException("失敗しました");
+        $payload = [
+            "Accepted" => true,
+        ];
         return json_response($response, 200, $payload);
     });
 });
@@ -196,6 +207,18 @@ class EngineUtil {
         }
     }
 
+    public static function run_command($cmd, $args = []) {
+        $command = "ssh root@localhost " . escapeshellcmd("/root/.sacloud-api/$cmd") . " " . array_map(function($arg) { return escapeshellarg($arg); }, $args);
+        $result = exec($command, $output, $result_code);
+        if($result === false) throw new WebException("$command, $result_code");
+
+        $http_status = 200;
+        $output = json_decode(implode("\n", $output), true);
+        if($result_code != 0) $http_status = 500;
+        if(isset($output["status_code"])) $http_status = $output["status_code"];
+        return [$output, $result_code, $http_status];
+    }
+
     function sacloudb_parsedBody($contents) {
         if(substr($contents,0, 5) === "data=") {
             parse_str($contents, $out);
@@ -230,7 +253,9 @@ class EngineUtil {
                 "data" => file_get_contents("/tmp/.status/systemctl.txt"),
             ],
         ];
-    
+
+        $backup = @file_get_contents("/mnt/backup/files.cache.json");
+        if($backup) $backup = json_decode($backup, true);
         $result = [
             "version" => [
                 "lastmodified" => "2021-07-01 00:00:00 +0900",
@@ -243,7 +268,7 @@ class EngineUtil {
                 "status" => "running"
             ],
             "log" => array_values(array_merge ($logs, $this->getLogs())),
-            "backup" => ["history" => []],
+            "backup" => ["history" => isset($backup["files"]) ? $backup["files"] : []],
         ];
     
         return [$result, [], []];
@@ -257,6 +282,10 @@ class EngineUtil {
             "Form" => $form,
         ];
         return $payload;
+    }
+
+    function response_not_primary($response) {
+        return json_response($response, 303, ["Message" => "is not primary"]);
     }
 
     public function has_vip() {

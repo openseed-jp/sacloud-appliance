@@ -12,9 +12,18 @@ USED_DISK_SIZE_KIB=$(/usr/sbin/repquota -au | grep  -e $SACLOUDB_DATABASE_OWNER 
 TOTAL_MEMORY_SIZE_KIB=$(free | grep Mem: | awk '{print $2}')
 USED_MEMORY_SIZE_KIB=$(free | grep Mem: | awk '{print $2-$4}')
 
-echo $TIME $TOTAL_DISK_SIZE_KIB $USED_DISK_SIZE_KIB $TOTAL_MEMORY_SIZE_KIB $USED_MEMORY_SIZE_KIB >> /tmp/.metrics/cur.txt
-LEN=$(cat /tmp/.metrics/cur.txt | wc -l)
+cat <<_EOL | jq -c >> /tmp/.metrics/cur.txt
+{
+    "$TIME": {
+        "disk1TotalSizeKiB": $TOTAL_DISK_SIZE_KIB,
+        "disk1UsedSizeKiB":  $USED_DISK_SIZE_KIB,
+        "memoryTotalSizeKiB": $TOTAL_MEMORY_SIZE_KIB,
+        "memoryUsedSizeKiB": $USED_MEMORY_SIZE_KIB
+    }
+}
+_EOL
 
+LEN=$(cat /tmp/.metrics/cur.txt | wc -l)
 if [ $LEN -ge 5 ];then
     FILE=/tmp/.metrics/cur.txt.$(date +%s)
     mv /tmp/.metrics/cur.txt $FILE
@@ -28,15 +37,7 @@ fi
 FILES=$(ls -tr /tmp/.metrics/cur.txt.* 2>/dev/null | head)
 if [ $? = 0 ]; then
     for FILE in $(ls -tr /tmp/.metrics/cur.txt.* | head); do
-        METRICS=$(jq -c -R -s 'split("\n")|map(split(" ")) |map({
-                (.[0]|tostring):{
-                    "disk1TotalSizeKiB":.[1],
-                    "disk1UsedSizeKiB":.[2],
-                    "memoryTotalSizeKiB":.[3],
-                    "memoryUsedSizeKiB":.[4],
-                }})' ${FILE} \
-            | sed -e 's/},{/,/g' | jq -c '.[0]|del(.null)|{"Data":.}')
-
+        METRICS=$(jq -s add $FILE | jq -c '{"Data":.}')
         if check_vrrp_primary ; then
             curl -sSLf --user "$SACLOUD_APIKEY_ACCESS_TOKEN:$SACLOUD_APIKEY_ACCESS_TOKEN_SECRET" \
                 -X PUT $APIROOT/cloud/1.1/appliance/$APPLIANCE_ID/database/0/monitor \

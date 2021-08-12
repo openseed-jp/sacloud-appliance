@@ -271,7 +271,7 @@ global_defs {
 }
 
 vrrp_script chk_myscript {
-  script "$SACLOUDAPI_HOME/bin/is_running.sh"
+  script "$SACLOUDAPI_HOME/bin/vrrp_running.sh"
   interval 5 # check every 5 seconds
   fall 2 # require 2 failures for KO
   rise 2 # require 2 successes for OK
@@ -289,10 +289,11 @@ vrrp_instance VI_1 {
     track_script {
         chk_myscript
     }
+    notify /root/.sacloud-api/bin/vrrp_notify.sh
 }
 _EOL
 
-cat <<'_EOF' > $SACLOUDAPI_HOME/bin/is_running.sh
+cat <<'_EOF' > $SACLOUDAPI_HOME/bin/vrrp_running.sh
 #!/bin/bash
 
 cd $(dirname $0)

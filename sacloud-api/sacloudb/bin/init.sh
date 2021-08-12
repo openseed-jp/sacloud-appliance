@@ -6,8 +6,7 @@ set -x -e -o pipefail -o errexit
 
 
 # TODO 暫定
-yum install -f nfs-utils quota
-
+yum install -y nfs-utils quota
 
 
 cat <<'_EOF' > $SACLOUDAPI_HOME/bin/update-firewalld-ext.sh

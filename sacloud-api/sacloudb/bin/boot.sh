@@ -7,7 +7,6 @@ cd $SACLOUDB_MODULE_BASE
 
 set -x -e -o pipefail -o errexit
 
-
 $SACLOUDAPI_HOME/bin/update-modules.sh
 $SACLOUDB_MODULE_BASE/bin/update-monitoring.sh
 
@@ -73,5 +72,8 @@ chmod 600 /var/spool/cron/root
 chown root:root /var/spool/cron/root
 systemctl reload crond
 
+
+# Config の更新
+$SACLOUDAPI_HOME/bin/update-config.sh
 
 echo "boot.sh done!"
