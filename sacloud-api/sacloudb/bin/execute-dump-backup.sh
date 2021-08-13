@@ -18,13 +18,16 @@ if [ ! "$VRRP_STATUS" = "MASTER" ]; then
    if df -h | grep /mnt/backup >/dev/null ; then
       umount /mnt/backup
    fi
-   
    exit
 fi
 
+if ! df -h | grep /mnt/backup >/dev/null ; then
+    mount $DB_BACKUP_CONNECT_HOST:$DB_BACKUP_CONNECT_SRCPATH /mnt/backup
+fi
+
 DISTDIR=/mnt/backup/sacloud-appliance/db-$APPLIANCE_ID
-mkdir -p $DISTDIR/unlock
-mkdir -p $DISTDIR/locked
+LOCK_STATUS=${1:-locked}
+mkdir -p $DISTDIR/$LOCK_STATUS
 
 DATETIME=$(TZ=Asia/Tokyo date '+%Y%m%d-%H%M%S')
 
@@ -40,8 +43,10 @@ _EOL
         exit 1
     fi
 
+
+
     cat <<_EOL >> $DISTDIR/backup.log
-$DISTDIR/unlock/.dump-$DATETIME.sql.gz
+$DISTDIR/$LOCK_STATUS/.dump-$DATETIME.sql.gz
 _EOL
     cat <<_EOL | bash - >/dev/null 2>&1 &
 mysqldump --quote-names \
@@ -53,7 +58,7 @@ mysqldump --quote-names \
         --gtid \
         --log-error=$DISTDIR/mysqldump.err \
     | gzip -c > $DISTDIR/.dump-$DATETIME.sql.gz 2>> $DISTDIR/backup.log
-mv $DISTDIR/.dump-$DATETIME.sql.gz $DISTDIR/unlock/dump-$DATETIME.sql.gz
+mv $DISTDIR/.dump-$DATETIME.sql.gz $DISTDIR/$LOCK_STATUS/dump-$DATETIME.sql.gz
 $(dirname $0)/execute-list-backup.sh　--force
 _EOL
 

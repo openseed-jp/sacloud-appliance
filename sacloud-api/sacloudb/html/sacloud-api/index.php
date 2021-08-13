@@ -139,7 +139,7 @@ $app->group('/sacloud-api', function (Group $api) {
 
         return json_response($response, 200, $payload);
     });
-    $api->get('/action/history', function (Request $request, Response $response, $args) {
+    $api->get('/history[/]', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
         if(!$util->has_vip()) return $util->response_not_primary($response);
 
@@ -152,12 +152,23 @@ $app->group('/sacloud-api', function (Group $api) {
         return json_response($response, 200, $payload);
     });
 
-    $api->post('/action/history', function (Request $request, Response $response, $args) {
+    $api->post('/history[/]', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
         if(!$util->has_vip()) return $util->response_not_primary($response);
 
-        $payload = $util->settings_response("backup");
-        list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/execute-dump-backup.sh");
+        $data = $util->sacloudb_parsedBody($request->getBody()->getContents());
+        $avail = isset($data["Settings"]["Settings"]["DBConf"]["backup"]["availability"])
+                ? $data["Settings"]["Settings"]["DBConf"]["backup"]["availability"]
+                : "unknown";
+        $avail2lock = [
+            "discontinued" => "unlock",
+            "discontinued" => "locked",
+            "unknown" => "locked",
+        ];
+        
+        $lock = isset($avail2lock[$avail]) ? $avail2lock[$avail] : $avail2lock["unknown"];
+                
+        list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/execute-dump-backup.sh", [$lock]);
         if ($exit_code != 0 && $result) return json_response($response, $http_status, $result);
         if ($exit_code != 0) throw new WebException("失敗しました");
         $payload = [
@@ -165,6 +176,37 @@ $app->group('/sacloud-api', function (Group $api) {
         ];
         return json_response($response, 200, $payload);
     });
+
+    $api->delete('/history/{timestamp}[/]', function (Request $request, Response $response, $args) {
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return $util->response_not_primary($response);
+
+        $timestamp = $args["timestamp"];
+        list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/execute-lock-backup.sh", ["delete", $timestamp]);
+        $payload = [($exit_code == 0 ? "is_ok" : "is_fatal") => true];
+        return json_response($response, $http_status, $payload);
+    });
+
+    $api->put('/history-lock/{timestamp}[/]', function (Request $request, Response $response, $args) {
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return $util->response_not_primary($response);
+
+        $timestamp = $args["timestamp"];
+        list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/execute-lock-backup.sh", ["locked", $timestamp]);
+        $payload = [($exit_code == 0 ? "is_ok" : "is_fatal") => true];
+        return json_response($response, $http_status, $payload);
+    });
+
+    $api->delete('/history-lock/{timestamp}[/]', function (Request $request, Response $response, $args) {
+        $util = EngineUtil::getEngineInstance();
+        if(!$util->has_vip()) return $util->response_not_primary($response);
+
+        $timestamp = $args["timestamp"];
+        list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/execute-lock-backup.sh", ["unlock", $timestamp]);
+        $payload = [($exit_code == 0 ? "is_ok" : "is_fatal") => true];
+        return json_response($response, $http_status, $payload);
+    });
+    
 });
 
 try {
@@ -208,7 +250,8 @@ class EngineUtil {
     }
 
     public static function run_command($cmd, $args = []) {
-        $command = "ssh root@localhost " . escapeshellcmd("/root/.sacloud-api/$cmd") . " " . array_map(function($arg) { return escapeshellarg($arg); }, $args);
+        $escaped_args = implode(" ", array_map(function($arg) { return escapeshellarg($arg); }, $args));
+        $command = "ssh root@localhost " . escapeshellcmd("/root/.sacloud-api/$cmd") . " $escaped_args"; 
         $result = exec($command, $output, $result_code);
         if($result === false) throw new WebException("$command, $result_code");
 

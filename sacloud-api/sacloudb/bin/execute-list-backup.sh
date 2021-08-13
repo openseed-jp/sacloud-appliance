@@ -53,11 +53,13 @@ if ! df -h | grep /mnt/backup >/dev/null ; then
 fi
 
 DISTDIR=/mnt/backup/sacloud-appliance/db-$APPLIANCE_ID
-
+mkdir -p $DISTDIR
 OUT=$(
-for file in $(find $DISTDIR  -name dump-*.sql.gz  | xargs ls -t) ; do
+for file in $(cd $DISTDIR; find $DISTDIR  -name dump-*.sql.gz  | xargs ls -t | grep .sql.gz) ; do
 
 name=$(basename $file)
+#timestamp=$(TZ=Asia/Tokyo date '+%FT%T%:z' -s "`stat -c  %x $file`")
+timestamp=$(basename $file | sed 's/dump-\([0-9]\{4\}\)\([0-9][0-9]\)\([0-9][0-9]\)-\([0-9][0-9]\)\([0-9][0-9]\)\([0-9][0-9]\).sql.gz/\1-\2-\3T\4:\5:\6+09:00/g')
 parent_dir=$(dirname $file)
 type=$(basename $parent_dir)
 backuptype=SQL
@@ -75,7 +77,7 @@ esac
 
 cat <<_EOL
 {
-    "createdat": "$(TZ=Asia/Tokyo date '+%FT%T%:z' -s "`stat -c  %x $file`")",
+    "createdat": "$timestamp",
     "availability": "$type",
     "backuptype": "$backuptype",
     "recoveredat": "$recoveredat",

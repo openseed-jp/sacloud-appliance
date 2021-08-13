@@ -10,6 +10,8 @@ set -x -e -o pipefail -o errexit
 $SACLOUDAPI_HOME/bin/update-modules.sh
 $SACLOUDB_MODULE_BASE/bin/update-monitoring.sh
 
+echo "STOP" > /tmp/.vrrp_status.txt
+
 if [ "$SACLOUDB_DATABASE_NAME" = "MariaDB" ]; then
     systemctl start mariadb
 
@@ -52,7 +54,6 @@ if [ "$SACLOUDB_DATABASE_NAME" = "postgres" ]; then
 
 
     systemctl start pgpool
-
     systemctl start keepalived
 
 
@@ -75,5 +76,6 @@ systemctl reload crond
 
 # Config の更新
 $SACLOUDAPI_HOME/bin/update-config.sh
+$SACLOUDB_MODULE_BASE/execute-list-backup.sh　--force
 
 echo "boot.sh done!"
