@@ -76,6 +76,6 @@ systemctl reload crond
 
 # Config の更新
 $SACLOUDAPI_HOME/bin/update-config.sh
-$SACLOUDB_MODULE_BASE/execute-list-backup.sh --force
+$SACLOUDB_MODULE_BASE/bin/execute-list-backup.sh --force
 
 echo "boot.sh done!"
