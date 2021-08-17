@@ -59,7 +59,7 @@ mysqldump --quote-names \
         --log-error=$DISTDIR/mysqldump.err \
     | gzip -c > $DISTDIR/.dump-$DATETIME.sql.gz 2>> $DISTDIR/backup.log
 mv $DISTDIR/.dump-$DATETIME.sql.gz $DISTDIR/$LOCK_STATUS/dump-$DATETIME.sql.gz
-$(dirname $0)/execute-list-backup.sh　--force
+$(dirname $0)/execute-list-backup.sh --force
 _EOL
 
 fi
