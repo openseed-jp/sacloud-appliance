@@ -3,6 +3,8 @@
 cd $(dirname $0)/..
 . .env
 
+OPTIONS=$1
+
 set -x -e -o pipefail -o errexit
 
 usermod -aG apache $SACLOUD_ADMIN_USER
@@ -31,6 +33,8 @@ SetEnv SACLOUDB_VIP_ADDRESS $SERVER_VIP
 SetEnv SACLOUDB_LOCAL_ADDRESS $SERVER_LOCALIP
 SetEnv SACLOUDB_PEER_ADDRESS $SERVER_PEER_LOCALIP
 
+SetEnv SACLOUDB_SERVER_GLOBALIP $SERVER_GLOBALIP
+SetEnv SACLOUDB_SERVER_ID $SERVER_ID
 
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
@@ -117,9 +121,17 @@ ProxyPassReverse /tail http://localhost:8011
 </VirtualHost>
 _EOF
 
-sed -i /usr/lib/systemd/system/httpd.service -e 's/^PrivateTmp=.*/PrivateTmp=false/g'
-systemctl daemon-reload
-apachectl restart
+if [ "$OPTIONS" = "--graceful" ]; then
+    if apachectl status >/dev/null ; then
+        apachectl graceful &
+    else
+        apachectl restart &
+    fi
+else
+    sed -i /usr/lib/systemd/system/httpd.service -e 's/^PrivateTmp=.*/PrivateTmp=false/g'
+    systemctl daemon-reload
+    apachectl restart
+fi
 
 : # gotty
 if which gotty >/dev/null ; then

@@ -22,7 +22,7 @@ else
 
 	if [ "$grep1" ] && [ "$grep2" ]; then
 		echo All is fine
-		MasterIP=$(grep 'Master, Running' $fileName | cut -f2)
+		MasterIP=$(grep -e 'Master, Running' -e 'Relay Master' $fileName | cut -f2)
 		if [ "$?" = "0" ]; then
 			if [ "$MasterIP" = "$SERVER_LOCALIP" ]; then
 				maxctrl alter maxscale passive true
