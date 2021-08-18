@@ -23,7 +23,7 @@ $app->group('/sacloud-api', function (Group $api) {
         if (!$util->has_vip()) return $util->response_not_primary($response);
 
         $payload = $util->getLogFile($args["file"]);
-        if(payload) {
+        if ($payload) {
             return json_response($response, 200, $payload);
         } else {
             return json_response($response, 404, []);
@@ -36,10 +36,8 @@ $app->group('/sacloud-api', function (Group $api) {
         list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/execute-restart-database.sh");
         $payload = [
             "Accepted" => true,
-            "vip_hostname" => $util->get_vip_hostname(),
-            "hostname" => gethostname(),
-            "aa1" =>  $result,
-            "aa2" =>  $exit_code,
+            "_result" =>  $result,
+            "_exit_code" =>  $exit_code,
         ];
 
         return json_response($response, 200, $payload);
@@ -123,10 +121,6 @@ $app->group('/sacloud-api', function (Group $api) {
         file_put_contents("/etc/my.cnf.d/zz_sacloudb.json", json_encode($data));
         file_put_contents("/etc/my.cnf.d/zz_sacloudb.cnf", implode("\n", $conf));
         file_put_contents("/etc/my.cnf.d/zz_sacloudb.sql", implode("\n", $sql));
-
-        if (count($sql) > 0) {
-            $util->executeQuery(implode("\n", $sql));
-        }
         $payload = ["Success" => true, "root" => $root, "form" => $formMap, "sql" => $sql, "vip_hostname" => $util->get_vip_hostname()];
         return json_response($response, 200, $payload);
     });
@@ -389,10 +383,10 @@ class EngineUtil
 
 class MariaDBEngineUtil extends EngineUtil
 {
-    function executeQuery($sql, $args = [])
+    function executeQuery($ipaddr, $sql, $args = [])
     {
         // ドライバ呼び出しを使用して MySQL データベースに接続します
-        $dsn = "mysql:dbname=mysql;host=" . getenv("SACLOUDB_VIP_ADDRESS");
+        $dsn = "mysql:dbname=mysql;host=$ipaddr";
         $user = getenv("SACLOUDB_ADMIN_USER");
         $password = getenv("SACLOUDB_ADMIN_PASS");
         try {
@@ -403,9 +397,18 @@ class MariaDBEngineUtil extends EngineUtil
             return [["status" => "500 Server Internal Error", "message" => $e->getMessage()]];
         }
     }
+    function executeQueryVIP($sql, $args = [])
+    {
+        $this->executeQuery(getenv("SACLOUDB_VIP_ADDRESS"), $sql, $args);
+    }
+    function executeQueryLocal($sql, $args = [])
+    {
+        $this->executeQuery(getenv("SACLOUDB_LOCAL_ADDRESS"), $sql, $args);
+    }
+
     function get_vip_hostname()
     {
-        $result = $this->executeQuery("SHOW VARIABLES WHERE Variable_name = 'hostname';");
+        $result = $this->executeQueryVIP("SHOW VARIABLES WHERE Variable_name = 'hostname';");
         return $result ? $result["Value"] : null;
     }
     function getLogs()
