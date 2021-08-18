@@ -82,7 +82,6 @@ $app->group('/sacloud-api', function (Group $api) {
 
     $api->put('/parameter', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
-        if (!$util->has_vip()) return $util->response_not_primary($response);
 
         $data = $util->sacloudb_parsedBody($request->getBody()->getContents());
         $root = $util->sacloudb_parsedAttr($data,  "Parameter", "/");
@@ -109,6 +108,7 @@ $app->group('/sacloud-api', function (Group $api) {
                 }
             }
         }
+
         $conf = [];
         foreach ($sections as $name => $lines) {
             $conf[] = "[$name]";
