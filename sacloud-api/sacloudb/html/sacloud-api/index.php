@@ -121,7 +121,9 @@ $app->group('/sacloud-api', function (Group $api) {
         file_put_contents("/etc/my.cnf.d/zz_sacloudb.sql", implode("\n", $sql));
 
         $payload = ["Success" => true];
-        return json_response($response, 303, $payload);
+
+        $status = $util->has_vip() ? 302 : 303;
+        return json_response($response, $status, $payload);
     });
     $api->get('/plugin', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
