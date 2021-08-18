@@ -18,21 +18,25 @@ if [ -f $DB_BACKUP_CACHE_FILE ]; then
         exit
 fi
 
-# クローンへの登録
 if [ "$DB_BACKUP_CONNECT" = "" ]; then
-    sed -e /execute-dump-backup.sh/d -e /var/spool/cron/root
-else
+    exit
+fi
+
+# クローンへの登録
+
+sed -e /execute-dump-backup.sh/d /var/spool/cron/root > /var/spool/cron/root.tmp
+
+if [ ! "$DB_BACKUP_TIME" = "" ]; then
     DUMP_COMMAND=$SACLOUDB_MODULE_BASE/bin/execute-dump-backup.sh
     CRON_LINE="$(echo $DB_BACKUP_TIME | cut -d: -f2) $(echo $DB_BACKUP_TIME | cut -d: -f1)  * * $(echo ${DB_BACKUP_DAY:-[0,1,2,3,4,5,6]}  | jq -M -r '.|@csv' | tr -d '"') $DUMP_COMMAND"
-    sed -e /execute-dump-backup.sh/d /var/spool/cron/root > /var/spool/cron/root.tmp
     echo "$CRON_LINE" >> /var/spool/cron/root.tmp
-    if diff /var/spool/cron/root /var/spool/cron/root.tmp >/dev/null 2>&1 ; then
-        rm -f /var/spool/cron/root.tmp
-    else
-        cp -f /var/spool/cron/root.tmp /var/spool/cron/root
-        chmod 600 /var/spool/cron/root
-        systemctl reload crond
-    fi
+fi
+if diff /var/spool/cron/root /var/spool/cron/root.tmp >/dev/null 2>&1 ; then
+    rm -f /var/spool/cron/root.tmp
+else
+    cp -f /var/spool/cron/root.tmp /var/spool/cron/root
+    chmod 600 /var/spool/cron/root
+    systemctl reload crond
 fi
 
 set -e -o pipefail -o errexit

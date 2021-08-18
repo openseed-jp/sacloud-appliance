@@ -1,16 +1,28 @@
 #!/bin/bash
 
 
+
 SACLOUDB_MODULE_BASE=$(cd $(dirname $0); pwd)
+cd $SACLOUDB_MODULE_BASE
+. .env
+
+if [ ! $(basename $0) = "startup.sh" ]; then
+  /usr/bin/cp -f $SACLOUDB_MODULE_BASE/startup.sh $SACLOUDB_MODULE_BASE/startup.run.sh
+  $SACLOUDB_MODULE_BASE/startup.run.sh
+  exit $?
+fi
 
 set -x -e -o pipefail
 
+# モジュールの更新
+$SACLOUDAPI_HOME/bin/update-modules.sh
+
 if [ $? = 0 ]; then
-    $SACLOUDB_MODULE_BASE/bin/init.sh
+  $SACLOUDB_MODULE_BASE/bin/init.sh
 fi
 
 if [ $? = 0 ]; then
-    $SACLOUDB_MODULE_BASE/bin/boot.sh
+  $SACLOUDB_MODULE_BASE/bin/boot.sh
 fi
 
 (

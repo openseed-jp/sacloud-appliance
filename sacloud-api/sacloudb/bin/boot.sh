@@ -7,7 +7,6 @@ cd $SACLOUDB_MODULE_BASE
 
 set -x -e -o pipefail -o errexit
 
-$SACLOUDAPI_HOME/bin/update-modules.sh
 $SACLOUDB_MODULE_BASE/bin/update-monitoring.sh
 
 echo "STOP" > /tmp/.vrrp_status.txt
