@@ -13,7 +13,7 @@ if [ $DB_BACKUP_CONNECT_PROTOCOL != "nfs" ]; then
 fi
 
 
-VRRP_STATUS=$(cat /tmp/.vrrp_status.txt 2>/dev/null)
+VRRP_STATUS=$(cat $SACLOUD_TMP/.vrrp_status.txt 2>/dev/null)
 if [ ! "$VRRP_STATUS" = "MASTER" ]; then
    if df -h | grep /mnt/backup >/dev/null ; then
       umount /mnt/backup

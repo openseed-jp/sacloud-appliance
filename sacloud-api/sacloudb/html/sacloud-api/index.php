@@ -263,7 +263,7 @@ class EngineUtil
     }
     public static function get_appliance_dbconf($key = null)
     {
-        $json = json_decode(file_get_contents("/tmp/.status/appliance.json"), true);
+        $json = json_decode(file_get_contents(EngineUtil::getSacloudTempDir(".status/appliance.json")), true);
         $dbconf = $json["Appliance"]["Remark"]["DBConf"];
         if ($key == null) {
             return $dbconf;
@@ -288,6 +288,11 @@ class EngineUtil
         if ($result_code != 0) $http_status = 500;
         if (isset($output["status_code"])) $http_status = $output["status_code"];
         return [$output, $result_code, $http_status];
+    }
+
+    public static function getSacloudTempDir($path) {
+        $tmp = getenv("SACLOUD_TMP");
+        return "$tmp/$path";
     }
 
     function sacloudb_parsedBody($contents)
@@ -323,7 +328,7 @@ class EngineUtil
             [
                 "group" => "systemctl",
                 "name" => "systemctl",
-                "data" => file_get_contents("/tmp/.status/systemctl.txt"),
+                "data" => file_get_contents(EngineUtil::getSacloudTempDir(".status/systemctl.txt")),
             ],
         ];
 
@@ -498,15 +503,15 @@ class PostgresDBEngineUtil extends EngineUtil
 
 function maxscale_status()
 {
-    if (!file_exists("/tmp/.maxctrl_output.txt")) {
+    if (!file_exists(EngineUtil::getSacloudTempDir(".maxctrl_output.txt"))) {
         $result = ["status" => "201 Created", "message" => "Still Setup"];
-    } else if ((time() - filemtime("/tmp/.maxctrl_output.txt")) > 5) {
+    } else if ((time() - filemtime(EngineUtil::getSacloudTempDir(".maxctrl_output.txt"))) > 5) {
         $result = ["status" => "307 Temporary Redirect", "message" => "Current Maxscale is gone."];
     } else {
-        $maxscale = file_get_contents("/tmp/.maxctrl_output.txt");
+        $maxscale = file_get_contents(EngineUtil::getSacloudTempDir(".maxctrl_output.txt"));
         if ($maxscale == "") {
             sleep(1);
-            $maxscale = file_get_contents("/tmp/.maxctrl_output.txt");
+            $maxscale = file_get_contents(EngineUtil::getSacloudTempDir(".maxctrl_output.txt"));
         }
         $lines = explode("\n", trim($maxscale));
         $services = [];

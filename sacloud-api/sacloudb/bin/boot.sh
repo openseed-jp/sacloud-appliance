@@ -9,7 +9,7 @@ set -x -e -o pipefail -o errexit
 
 $SACLOUDB_MODULE_BASE/bin/update-monitoring.sh
 
-echo "STOP" > /tmp/.vrrp_status.txt
+echo "STOP" > $SACLOUD_TMP/.vrrp_status.txt
 
 if [ "$SACLOUDB_DATABASE_NAME" = "MariaDB" ]; then
     systemctl start mariadb

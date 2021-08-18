@@ -4,7 +4,7 @@ cd $(dirname $0)
 . .env
 
 set -o pipefail
-fileName="/tmp/.maxctrl_output.txt"
+fileName="$SACLOUD_TMP/.maxctrl_output.txt"
 
 maxctrl list servers --tsv > $fileName.work
 to_result=$?

@@ -4,7 +4,7 @@ cd $(dirname $0)/..
 . .env
 
 set -e -o pipefail -o errexit
-mkdir -p /tmp/.metrics
+mkdir -p $SACLOUD_TMP/.metrics
 
 TIME=$(TZ=Asia/Tokyo date '+%FT%R:00%:z')
 TOTAL_DISK_SIZE_KIB=$(/usr/sbin/repquota -au | grep  -e $SACLOUDB_DATABASE_OWNER | awk '{print ($4+$5)/2}')
@@ -12,7 +12,7 @@ USED_DISK_SIZE_KIB=$(/usr/sbin/repquota -au | grep  -e $SACLOUDB_DATABASE_OWNER 
 TOTAL_MEMORY_SIZE_KIB=$(free | grep Mem: | awk '{print $2}')
 USED_MEMORY_SIZE_KIB=$(free | grep Mem: | awk '{print $2-$4}')
 
-cat <<_EOL | jq -c >> /tmp/.metrics/cur.txt
+cat <<_EOL | jq -c >> $SACLOUD_TMP/.metrics/cur.txt
 {
     "$TIME": {
         "disk1TotalSizeKiB": $TOTAL_DISK_SIZE_KIB,
@@ -23,20 +23,20 @@ cat <<_EOL | jq -c >> /tmp/.metrics/cur.txt
 }
 _EOL
 
-LEN=$(cat /tmp/.metrics/cur.txt | wc -l)
+LEN=$(cat $SACLOUD_TMP/.metrics/cur.txt | wc -l)
 if [ $LEN -ge 5 ];then
-    FILE=/tmp/.metrics/cur.txt.$(date +%s)
-    mv /tmp/.metrics/cur.txt $FILE
+    FILE=$SACLOUD_TMP/.metrics/cur.txt.$(date +%s)
+    mv $SACLOUD_TMP/.metrics/cur.txt $FILE
 fi
 
-FILES=$(ls -tr /tmp/.metrics/cur.txt.* 2>/dev/null | head)
+FILES=$(ls -tr $SACLOUD_TMP/.metrics/cur.txt.* 2>/dev/null | head)
 if [ $? = 0 ]; then
     sleep $(($(od -vAn --width=4 -tu4 -N4 </dev/urandom) % 60))
 fi
 
-FILES=$(ls -tr /tmp/.metrics/cur.txt.* 2>/dev/null | head)
+FILES=$(ls -tr $SACLOUD_TMP/.metrics/cur.txt.* 2>/dev/null | head)
 if [ $? = 0 ]; then
-    for FILE in $(ls -tr /tmp/.metrics/cur.txt.* | head); do
+    for FILE in $(ls -tr $SACLOUD_TMP/.metrics/cur.txt.* | head); do
         METRICS=$(jq -s add $FILE | jq -c '{"Data":.}')
         if check_vrrp_primary ; then
             curl -sSLf --user "$SACLOUD_APIKEY_ACCESS_TOKEN:$SACLOUD_APIKEY_ACCESS_TOKEN_SECRET" \

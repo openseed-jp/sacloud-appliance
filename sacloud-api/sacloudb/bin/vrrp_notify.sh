@@ -9,8 +9,8 @@ cd $(dirname $0)/.. && . .env
 set -e -o pipefail -o errexit
 
 RUNAT=$(TZ=Asia/Tokyo date '+%FT%T%:z')
-echo $RUNAT "Perform action for transition to ${ENDSTATE} state for VRRP ${TYPE} ${NAME}"  >> /tmp/vrrp_notify
-echo "${ENDSTATE}" > /tmp/.vrrp_status.txt
+echo $RUNAT "Perform action for transition to ${ENDSTATE} state for VRRP ${TYPE} ${NAME}"  >> $SACLOUD_TMP/vrrp_notify
+echo "${ENDSTATE}" > $SACLOUD_TMP/.vrrp_status.txt
 
 case $ENDSTATE in
     "BACKUP")

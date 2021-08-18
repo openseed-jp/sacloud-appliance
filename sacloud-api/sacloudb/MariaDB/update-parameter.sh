@@ -2,11 +2,7 @@
 
 cd $(dirname $0) && . .env
 
-VRRP_STATUS=$(cat /tmp/.vrrp_status.txt 2>/dev/null)
-if [ ! "$VRRP_STATUS" = "MASTER" ]; then
-    echo "is not master" >&2
-    exit 1
-fi
+VRRP_STATUS=$(cat $SACLOUD_TMP/.vrrp_status.txt 2>/dev/null)
 
 if [ ! -f /etc/my.cnf.d/zz_sacloudb.sql -o $(cat /etc/my.cnf.d/zz_sacloudb.sql| wc -l) = 0]; then
     exit 0

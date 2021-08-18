@@ -27,6 +27,8 @@ fi
 cp -fr $SACLOUDAPI_HOME/sacloudb/html /home/$SACLOUD_ADMIN_USER/.
 cat <<_EOF > /home/$SACLOUD_ADMIN_USER/html/sacloud-api/.htaccess
 
+SetEnv SACLOUD_TMP $SACLOUD_TMP
+
 SetEnv SACLOUDB_ADMIN_USER $SACLOUDB_ADMIN_USER
 SetEnv SACLOUDB_ADMIN_PASS $SACLOUDB_ADMIN_PASS
 SetEnv SACLOUDB_VIP_ADDRESS $SERVER_VIP
@@ -134,8 +136,8 @@ else
 fi
 
 : # gotty
-if which gotty >/dev/null ; then
-    if ! ps -ef | grep  "[-]port 8011" >/dev/null 2>&1 ; then
-        gotty --address 127.0.0.1 --port 8011 --max-connection 3 --title-format $(hostname) --permit-arguments tail 2>> /tmp/gotty.log &
-    fi
-fi
+#if which gotty >/dev/null ; then
+#    if ! ps -ef | grep  "[-]port 8011" >/dev/null 2>&1 ; then
+#        gotty --address 127.0.0.1 --port 8011 --max-connection 3 --title-format $(hostname) --permit-arguments tail 2>> $SACLOUD_TMP/gotty.log &
+#    fi
+#fi

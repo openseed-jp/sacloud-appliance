@@ -1,5 +1,6 @@
 #!/bin/bash
 
+. $(dirname $0)/.env
 
 mkdir -p /tmp/.status
 cat <<_EOF > /tmp/.status/systemctl.txt

@@ -9,7 +9,7 @@ cd $SACLOUDB_MODULE_BASE
 
 set -x -e -o pipefail -o errexit
 
-VRRP_STATUS=$(cat /tmp/.vrrp_status.txt 2>/dev/null)
+VRRP_STATUS=$(cat $SACLOUD_TMP/.vrrp_status.txt 2>/dev/null)
 if [ ! "$VRRP_STATUS" = "MASTER" ]; then
     echo "is not master" >&2
     exit 1
