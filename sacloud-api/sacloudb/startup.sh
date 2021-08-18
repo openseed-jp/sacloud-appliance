@@ -6,7 +6,7 @@ SACLOUDB_MODULE_BASE=$(cd $(dirname $0); pwd)
 cd $SACLOUDB_MODULE_BASE
 . .env
 
-if [ ! $(basename $0) = "startup.sh" ]; then
+if [ $(basename $0) = "startup.sh" ]; then
   /usr/bin/cp -f $SACLOUDB_MODULE_BASE/startup.sh $SACLOUDB_MODULE_BASE/startup.run.sh
   $SACLOUDB_MODULE_BASE/startup.run.sh
   exit $?
