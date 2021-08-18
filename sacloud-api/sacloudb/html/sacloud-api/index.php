@@ -46,7 +46,11 @@ $app->group('/sacloud-api', function (Group $api) {
         $util = EngineUtil::getEngineInstance();
         list($payload, $status, $headers) = $util->status_setting_response();
         list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/update-config.sh");
-        list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/update-monitoring.sh", ["--graceful"]);
+
+        $payload = array_merge($payload, [
+            "_result" =>  $result,
+            "_exit_code" =>  $exit_code,
+        ]);
         return json_response($response, 302, $payload);
     });
     $api->get('/status', function (Request $request, Response $response, $args) {
@@ -54,16 +58,10 @@ $app->group('/sacloud-api', function (Group $api) {
         if (!$util->has_vip()) return $util->response_not_primary($response);
 
         list($payload, $status, $headers) = $util->status_setting_response();
-
-        $command = "ssh root@localhost /root/.sacloud-api/sacloudb/bin/execute-update-config.sh";
-        $result = exec($command, $output, $result_code);
-        $_payload = [
-            "Accepted" => true,
-            "vip_hostname" => $util->get_vip_hostname(),
-            "hostname" => gethostname(),
-            "aa1" =>  $result,
-            "aa2" =>  $output,
-        ];
+        $payload = array_merge($payload, [
+            "_vip_hostname" => $util->get_vip_hostname(),
+            "_hostname" => gethostname(),
+        ]);
 
         return json_response($response, 200, $payload);
     });
@@ -121,8 +119,9 @@ $app->group('/sacloud-api', function (Group $api) {
         file_put_contents("/etc/my.cnf.d/zz_sacloudb.json", json_encode($data));
         file_put_contents("/etc/my.cnf.d/zz_sacloudb.cnf", implode("\n", $conf));
         file_put_contents("/etc/my.cnf.d/zz_sacloudb.sql", implode("\n", $sql));
-        $payload = ["Success" => true, "root" => $root, "form" => $formMap, "sql" => $sql, "vip_hostname" => $util->get_vip_hostname()];
-        return json_response($response, 200, $payload);
+
+        $payload = ["Success" => true];
+        return json_response($response, 303, $payload);
     });
     $api->get('/plugin', function (Request $request, Response $response, $args) {
         $util = EngineUtil::getEngineInstance();
@@ -399,11 +398,11 @@ class MariaDBEngineUtil extends EngineUtil
     }
     function executeQueryVIP($sql, $args = [])
     {
-        $this->executeQuery(getenv("SACLOUDB_VIP_ADDRESS"), $sql, $args);
+        return $this->executeQuery(getenv("SACLOUDB_VIP_ADDRESS"), $sql, $args);
     }
     function executeQueryLocal($sql, $args = [])
     {
-        $this->executeQuery(getenv("SACLOUDB_LOCAL_ADDRESS"), $sql, $args);
+        return $this->executeQuery(getenv("SACLOUDB_LOCAL_ADDRESS"), $sql, $args);
     }
 
     function get_vip_hostname()
