@@ -75,7 +75,7 @@ $app->group('/sacloud-api', function (Group $api) {
         $payload["Parameter"] = (array)@$param["Parameter"];
 
 
-        $accepted = ["max_connections" => "max_connections", "version" => "version"];
+        $accepted = ["max_connections" => "max_connections", "sync_binlog" => "sync_binlog"];
         $payload["Remark"]["Form"] = array_values($util->getFormMap("Parameter", $param, $accepted));
         return json_response($response, 200, $payload);
     });
@@ -89,7 +89,7 @@ $app->group('/sacloud-api', function (Group $api) {
             "mysqld" => [],
         ];
 
-        $accepted = ["max_connections" => "max_connections", "version" => "version"];
+        $accepted = ["max_connections" => "max_connections", "sync_binlog" => "sync_binlog"];
         $formMap = $util->getFormMap("Parameter", [], $accepted);
 
         $sql = [];
@@ -175,8 +175,22 @@ $app->group('/sacloud-api', function (Group $api) {
         if ($exit_code != 0) throw new WebException("失敗しました");
         $payload = [
             "Accepted" => true,
+            "__result" => [$result, $exit_code, $http_status],
         ];
         return json_response($response, 200, $payload);
+    });
+
+    $api->post('/history/{timestamp}[/]', function (Request $request, Response $response, $args) {
+        $util = EngineUtil::getEngineInstance();
+        if (!$util->has_vip()) return $util->response_not_primary($response);
+
+        $timestamp = $args["timestamp"];
+        list($result, $exit_code, $http_status) = $util->run_command("sacloudb/bin/execute-recovery-backup.sh", ["*lock*", $timestamp]);
+        $payload = [
+            ($exit_code == 0 ? "is_ok" : "is_fatal") => true,
+            "_result" => [$result, $exit_code, $http_status],
+        ];
+        return json_response($response, $http_status, $payload);
     });
 
     $api->delete('/history/{timestamp}[/]', function (Request $request, Response $response, $args) {
@@ -332,7 +346,7 @@ class EngineUtil
             ],
         ];
 
-        $backup = @file_get_contents("/mnt/backup/files.cache.json");
+        $backup = @file_get_contents(EngineUtil::getSacloudTempDir(".backup_files.cache.json"));
         if ($backup) $backup = json_decode($backup, true);
         $result = [
             "version" => [

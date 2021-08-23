@@ -3,6 +3,22 @@
   "Form": [
     {
       "type": "text",
+      "name": "MariaDB/server.cnf/mysqld/sync_binlog",
+      "label": "sync_binlog",
+      "options": {
+        "ex": "1",
+        "min": 0,
+        "max": 4294967295,
+        "maxlen": 10,
+        "integer": true,
+        "text": "バイナリログをディスクに同期する頻度を制御します。",
+        "reboot": "dynamic",
+        "type": "numeric"
+      }
+    },
+
+    {
+      "type": "text",
       "name": "MariaDB/server.cnf/mysqld/sort_buffer_size",
       "label": "sort_buffer_size",
       "options": {

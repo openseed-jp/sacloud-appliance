@@ -2,8 +2,8 @@
 
 . $(dirname $0)/.env
 
-mkdir -p /tmp/.status
-cat <<_EOF > /tmp/.status/systemctl.txt
+mkdir -p $SACLOUD_TMP/.status
+cat <<_EOF > $SACLOUD_TMP/.status/systemctl.txt
 [mariadb.service]
 $(systemctl status mariadb.service)
 

@@ -5,10 +5,34 @@ cd $(dirname $0)/..
 set -x -e -o pipefail -o errexit
 
 
-# TODO 暫定
-yum install -y nfs-utils quota
+# TODO 暫定 開始
+yum install -y nfs-utils quota autofs 
+### s3fs
+yum -y install fuse-devel openssl-devel libcurl-devel libxml2-devel
+curl -SsL https://github.com/s3fs-fuse/s3fs-fuse/archive/refs/tags/v1.90.tar.gz | tar zxvf - -C /usr/local/src
+cd /usr/local/src/s3fs-fuse-1.90
+./autogen.sh && ./configure
+make && make install && make clean
 
+### autofs
+systemctl enable autofs
+cat <<_EOF > /etc/auto.master
+#
+# Sample auto.master file
+#
 
+#/misc   /etc/auto.misc
+#/net    -hosts
+#+dir:/etc/auto.master.d
+#+auto.master
+/mnt/sacloud /etc/auto.sacloud
+_EOF
+mkdir -p /mnt/sacloud
+touch /etc/auto.sacloud
+systemctl start autofs
+# TODO 暫定 終了
+
+cd $SACLOUDAPI_HOME
 cat <<'_EOF' > $SACLOUDAPI_HOME/bin/update-firewalld-ext.sh
 #!/bin/bash
 
@@ -122,6 +146,8 @@ if [ ! -f $SACLOUDB_MODULE_BASE/bin/init.done ]; then
     # TODO: （アーカイブ作成時に書くべき？）
     sed -e 's/^UsePAM no/UsePAM yes/g' -i /etc/ssh/sshd_config
     systemctl restart sshd
+
+    # 
 
     # TODO: その他の設定（アーカイブ作成時に書くべき？）
     if ! which gotty >/dev/null ; then

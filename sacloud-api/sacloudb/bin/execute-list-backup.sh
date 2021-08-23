@@ -50,14 +50,11 @@ if [ -f $DB_BACKUP_CACHE_FILE ]; then
 	exit;
 fi
 
-mkdir -p /mnt/backup
-
-if ! df -h | grep /mnt/backup >/dev/null ; then
-    mount $DB_BACKUP_CONNECT_HOST:$DB_BACKUP_CONNECT_SRCPATH /mnt/backup
+DISTDIR=$SACLOUD_MOUNT_PATH/export/sacloud-appliance/db-$APPLIANCE_ID/backup
+if [ ! -d $DISTDIR ] ; then
+   exit
 fi
 
-DISTDIR=/mnt/backup/sacloud-appliance/db-$APPLIANCE_ID
-mkdir -p $DISTDIR
 OUT=$(
 for file in $(cd $DISTDIR; find $DISTDIR  -name dump-*.sql.gz  | xargs ls -t | grep .sql.gz) ; do
 
@@ -74,7 +71,7 @@ case $type in
 "unlock")
     type=discontinued;;
 "locked")
-    type=avaiable;;
+    type=available;;
 *)
     type=zombie;;
 esac
@@ -93,5 +90,3 @@ done
 
 echo "$OUT" | jq -s -M '{"files": .}' > $DB_BACKUP_CACHE_FILE
 cat $DB_BACKUP_CACHE_FILE
-
-umount /mnt/backup

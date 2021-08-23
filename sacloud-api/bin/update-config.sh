@@ -29,10 +29,9 @@ mkdir -p $SACLOUDAPI_HOME/conf
 # テンポラリのディレクトリ
 if [ "$SACLOUD_TMP" = "" ]; then
         SACLOUD_TMP=/tmp
-else
-        mkdir -p $SACLOUD_TMP
-        chmod 777 $SACLOUD_TMP
 fi
+mkdir -p $SACLOUD_TMP
+chmod 777 $SACLOUD_TMP
 
 # update-interfaces.sh 用の設定ファイル
 SERVER_VIP=$(jq -r .Appliance.Settings.Network.VirtualIPAddress /root/.sacloud-api/status.json)
