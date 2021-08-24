@@ -21,8 +21,10 @@ else
 export -fstype=$DB_BACKUP_CONNECT_PROTOCOL,rw,hard,intr,rsize=32768,wsize=32768 $DB_BACKUP_CONNECT_HOST:$DB_BACKUP_CONNECT_SRCPATH
 _EOF
     systemctl reload autofs
-    if df -h | grep $SACLOUD_MOUNT_PATH/export/sacloud-appliance > /dev/null ; then
+    if [ "$?" = 0 ]; then
         mkdir -p $SACLOUD_MOUNT_PATH/export/sacloud-appliance/db-$APPLIANCE_ID/backup
     fi
 fi
 
+# キャッシュの削除
+$SACLOUDAPI_HOME/sacloudb/bin/execute-list-backup.sh --force
