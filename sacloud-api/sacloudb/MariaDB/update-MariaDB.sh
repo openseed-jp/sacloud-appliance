@@ -183,7 +183,7 @@ GRANT SELECT, LOCK TABLES, SHOW VIEW, RELOAD, REPLICATION CLIENT, REPLICATION SL
 GRANT DELETE ON mysql.gtid_slave_pos TO '${SACLOUDB_REPLICA_USER}'@'${DB_REPLICATION_NETROWK}';
 
 FLUSH PRIVILEGES;
-set global strict_password_validation = 'ON';
+-- set global strict_password_validation = 'ON';
 
 -- OTHER
 drop database test;
