@@ -6,6 +6,7 @@ set -x -e -o pipefail -o errexit
 
 
 # TODO 暫定 開始
+yum-config-manager --save --setopt=mariadb-maxscale.skip_if_unavailable=true
 yum install -y nfs-utils quota autofs 
 ### s3fs
 yum -y install fuse-devel openssl-devel libcurl-devel libxml2-devel
