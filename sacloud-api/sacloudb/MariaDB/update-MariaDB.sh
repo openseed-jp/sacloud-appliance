@@ -156,6 +156,7 @@ if [ "$SERVER_ID" = "$SERVER1_ID" ]; then
 		mysql -u root <<_EOL
 FLUSH PRIVILEGES;
 set global strict_password_validation = 'OFF';
+UNINSTALL PLUGIN IF EXISTS cracklib_password_check;
 -- ADMIN
 CREATE USER IF NOT EXISTS '${SACLOUDB_ADMIN_USER}'@'localhost' IDENTIFIED VIA unix_socket;
 -- ALTER USER '${SACLOUDB_ADMIN_USER}'@'localhost' IDENTIFIED BY '${SACLOUDB_ADMIN_PASS}';
@@ -183,6 +184,7 @@ GRANT SELECT, LOCK TABLES, SHOW VIEW, RELOAD, REPLICATION CLIENT, REPLICATION SL
 GRANT DELETE ON mysql.gtid_slave_pos TO '${SACLOUDB_REPLICA_USER}'@'${DB_REPLICATION_NETROWK}';
 
 FLUSH PRIVILEGES;
+-- INSTALL SONAME 'cracklib_password_check';
 -- set global strict_password_validation = 'ON';
 
 -- OTHER
