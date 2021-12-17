@@ -199,11 +199,6 @@ cat <<_EOF > /var/lib/pgadmin/servers.json
 }
 _EOF
 
-# pgadmin4 version 5.4 は動かない・・・。 
-yum erase -y pgadmin4 pgadmin4-*
-rpm -ivh https://ftp.postgresql.org/pub/pgadmin/pgadmin4/yum/redhat/rhel-7-x86_64/pgadmin4-server-5.3-1.el7.x86_64.rpm
-rpm -ivh https://ftp.postgresql.org/pub/pgadmin/pgadmin4/yum/redhat/rhel-7-x86_64/pgadmin4-python3-mod_wsgi-4.7.1-2.el7.x86_64.rpm
-rpm -ivh https://ftp.postgresql.org/pub/pgadmin/pgadmin4/yum/redhat/rhel-7-x86_64/pgadmin4-web-5.3-1.el7.noarch.rpm
 
 cat <<_EOF > /usr/pgadmin4/web/config_local.py
 UPGRADE_CHECK_ENABLED=False
@@ -219,6 +214,7 @@ python3 /usr/pgadmin4/web/setup.py \
 
 : #権限変更
 chown -R $SACLOUD_ADMIN_USER:$SACLOUD_ADMIN_USER /var/lib/pgadmin /var/log/pgadmin
+usermod -aG apache $SACLOUD_ADMIN_USER
 
 : 再起動 $0:$LINENO at $(date "+%Y/%m/%d-%H:%M:%S")
 apachectl restart

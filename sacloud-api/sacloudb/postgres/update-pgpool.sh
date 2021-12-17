@@ -293,39 +293,6 @@ vrrp_instance VI_1 {
 }
 _EOL
 
-cat <<'_EOF' > $SACLOUDAPI_HOME/bin/vrrp_running.sh
-#!/bin/bash
-
-cd $(dirname $0)
-. ../sacloudb/postgres/.env
-
-set -o pipefail
-
-export PGPASSFILE=/home/sacloud-admin/.pgpass
-psql -h localhost -U sacloud-admin -p 5432 postgres -c "SELECT pg_is_in_recovery();"  -P expanded=on --csv > $SACLOUD_TMP/.status/postgres
-
-systemctl status pgpool > $SACLOUD_TMP/.status/pgpool
-STATUS_PGPOOL=$?
-if [ ! $STATUS_PGPOOL = 0 ]; then
-#    shutdown -t0 now
-    exit 1
-fi
-
-ip addr | grep "scope global secondary" >/dev/null
-BACKUP_VIP=$?
-
-# バックアップとして動作していた場合、 常にリカバリ中のため、 t となる。 プライマリは、 f
-grep 'pg_is_in_recovery,f' $SACLOUD_TMP/.status/postgres > /dev/null 2>&1
-BACKUP_DB=$?
-
-echo $BACKUP_VIP $BACKUP_DB
-if [ $BACKUP_VIP = 0 -a $BACKUP_DB = 1 ]; then
-    # VIP がプライマリの時, DB がバックアップだったら、NG
-    exit 1;
-fi
-
-exit 0
-_EOF
 chmod +x $SACLOUDAPI_HOME/bin/*.sh
 
 
@@ -334,7 +301,7 @@ cat <<_EOF > /var/www/html/index.html
 <html>
 <body>
 <ul>
-<li><a href="/pgadmin4/">pgAdmin 4 (v5.3)</a>(ID: ${SACLOUDB_DEFAULT_USER}@db-${APPLIANCE_ID}, PW: [default password]</li>
+<li><a href="/pgadmin4/">pgAdmin 4 (v5.3)</a>(ID: ${SACLOUDB_DEFAULT_USER}@localhost, PW: [default password]</li>
 <li><a href="/pgpooladmin/">pgpool Administration Tool Version 4.1.0</a></li>
 </ul>
 </body>

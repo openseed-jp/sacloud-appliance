@@ -384,7 +384,9 @@ class EngineUtil
 
     public function has_vip()
     {
-        return $this->get_vip_hostname() == gethostname();
+        $a = exec("ip addr| grep 'scope global secondary'");
+        return strlen(trim($a)) > 0;
+        //return $this->get_vip_hostname() == gethostname();
     }
 
     public function getLogs()

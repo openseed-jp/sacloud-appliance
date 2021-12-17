@@ -6,14 +6,17 @@ set -x -e -o pipefail -o errexit
 
 
 # TODO 暫定 開始
-yum-config-manager --save --setopt=mariadb-maxscale.skip_if_unavailable=true
-yum install -y nfs-utils quota autofs 
-### s3fs
-yum -y install fuse-devel openssl-devel libcurl-devel libxml2-devel
-curl -SsL https://github.com/s3fs-fuse/s3fs-fuse/archive/refs/tags/v1.90.tar.gz | tar zxvf - -C /usr/local/src
-cd /usr/local/src/s3fs-fuse-1.90
-./autogen.sh && ./configure
-make && make install && make clean
+if ! which s3fs ; then
+    yum-config-manager --save --setopt=mariadb-maxscale.skip_if_unavailable=true
+    yum install -y nfs-utils quota autofs 
+    ### s3fs
+    yum -y install fuse-devel openssl-devel libcurl-devel libxml2-devel
+    curl -SsL https://github.com/s3fs-fuse/s3fs-fuse/archive/refs/tags/v1.90.tar.gz | tar zxvf - -C /usr/local/src
+    cd /usr/local/src/s3fs-fuse-1.90
+    ./autogen.sh && ./configure
+    make && make install && make clean
+fi
+# TODO 暫定 終了
 
 ### autofs
 systemctl enable autofs
@@ -28,10 +31,10 @@ cat <<_EOF > /etc/auto.master
 #+auto.master
 /mnt/sacloud /etc/auto.sacloud
 _EOF
+
 mkdir -p /mnt/sacloud
 touch /etc/auto.sacloud
 systemctl start autofs
-# TODO 暫定 終了
 
 cd $SACLOUDAPI_HOME
 cat <<'_EOF' > $SACLOUDAPI_HOME/bin/update-firewalld-ext.sh
