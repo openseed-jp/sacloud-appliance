@@ -47,9 +47,9 @@ jq '.Appliance.Servers[0].Interfaces[].PacketFilter'  /root/.sacloud-api/status.
 . /root/.sacloud-api/.env
 set | grep -e ^SACLOUD -e ^SERVER -e ^AP > /root/.sacloud-api/conf/env.cache
 
-
 # 設定ファイルのディレクトリ
 mkdir -p $SACLOUD_TMP/.status
 cp -f /root/.sacloud-api/status.json  $SACLOUD_TMP/.status/appliance.json
 
-# 
+# ルーティングの更新設定
+/root/.sacloud-api/bin/update-interface-route.sh

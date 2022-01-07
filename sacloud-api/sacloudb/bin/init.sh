@@ -6,6 +6,7 @@ set -x -e -o pipefail -o errexit
 
 
 # TODO 暫定 開始
+ls -alt /usr/local/bin
 if ! which s3fs ; then
     yum-config-manager --save --setopt=mariadb-maxscale.skip_if_unavailable=true
     yum install -y nfs-utils quota autofs 
@@ -16,6 +17,11 @@ if ! which s3fs ; then
     ./autogen.sh && ./configure
     make && make install && make clean
 fi
+
+# sshd の設定
+sed -e 's/^UsePAM no/UsePAM yes/g' -i /etc/ssh/sshd_config
+systemctl restart sshd
+
 # TODO 暫定 終了
 
 ### autofs
@@ -144,10 +150,6 @@ if [ ! -f $SACLOUDB_MODULE_BASE/bin/init.done ]; then
         $SACLOUDB_MODULE_BASE/postgres/init-replication.sh
         $SACLOUDB_MODULE_BASE/postgres/update-pgpool.sh
     fi
-
-    # sshd の設定
-    sed -e 's/^UsePAM no/UsePAM yes/g' -i /etc/ssh/sshd_config
-    systemctl restart sshd
 
     touch $SACLOUDB_MODULE_BASE/bin/init.done
 fi

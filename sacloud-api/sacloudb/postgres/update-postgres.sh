@@ -18,10 +18,11 @@ cat <<_SQL | psql
 CREATE USER "$SACLOUDB_ADMIN_USER" WITH SUPERUSER CREATEDB CREATEROLE INHERIT LOGIN REPLICATION PASSWORD '$SACLOUDB_ADMIN_PASS';
 GRANT "postgres" TO "sacloud-admin";
 
-CREATE USER "$SACLOUDB_DEFAULT_USER" PASSWORD '$SACLOUDB_DEFAULT_PASS';
-CREATE SCHEMA IF NOT EXISTS "$SACLOUDB_DEFAULT_USER" AUTHORIZATION "$SACLOUDB_DEFAULT_USER";
+CREATE USER "$SACLOUDB_DEFAULT_USER" WITH CREATEDB CREATEROLE INHERIT LOGIN PASSWORD '$SACLOUDB_DEFAULT_PASS';
 CREATE DATABASE "$SACLOUDB_DEFAULT_USER";
 GRANT ALL PRIVILEGES ON DATABASE "$SACLOUDB_DEFAULT_USER" TO "$SACLOUDB_DEFAULT_USER";
+\c $SACLOUDB_DEFAULT_USER
+CREATE SCHEMA IF NOT EXISTS "$SACLOUDB_DEFAULT_USER" AUTHORIZATION "$SACLOUDB_DEFAULT_USER";
 
 _SQL
     $PGHOME/bin/pg_ctl stop -D $PGDATA
@@ -42,7 +43,7 @@ _EOL
 listen_addresses = '*' # what IP address(es) to listen on;
 
 wal_level = hot_standby
-max_wal_senders = 3
+max_wal_senders = 8
 archive_mode = off
 #wal_keep_segments = 30
 max_replication_slots = 3
@@ -80,8 +81,9 @@ host    replication     $SACLOUD_ADMIN_USER  db-${APPLIANCE_ID}-02    md5
 #host    postgres        $SACLOUD_ADMIN_USER  db-${APPLIANCE_ID}-01    trust
 #host    postgres        $SACLOUD_ADMIN_USER  db-${APPLIANCE_ID}-02    trust
 
-host    all             all             127.0.0.1/32    md5
-host    all             all             $DB_REPLICATION_NETROWK_ADDRESS/$DB_REPLICATION_NETROWK_MASKLEN    md5
+host    all             all             0.0.0.0/0    md5
+#host    all             all             127.0.0.1/32    md5
+#host    all             all             $DB_REPLICATION_NETROWK_ADDRESS/$DB_REPLICATION_NETROWK_MASKLEN    md5
 
 # /sacloud
 _EOL

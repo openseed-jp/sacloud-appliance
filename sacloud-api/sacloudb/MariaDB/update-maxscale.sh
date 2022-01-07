@@ -216,7 +216,7 @@ VRRP_STATE=backup
 VRRP_PRIORITY=100
 VRRP_INTERFACE=eth1
 VRRP_IPADDRESS=$(jq -r .Interfaces[1].VirtualIPAddress $SACLOUDAPI_HOME/conf/interfaces.json)
-VRRP_IPADDRESS_LEN=24
+VRRP_IPADDRESS_LEN=$(jq -r .Interfaces[1].Switch.UserSubnet.NetworkMaskLen $SACLOUDAPI_HOME/conf/interfaces.json)
 VRRP_ID=$(echo $VRRP_IPADDRESS | cut -d. -f4)
 
 cat > /etc/keepalived/keepalived.conf <<_EOL
@@ -237,6 +237,7 @@ vrrp_instance VI_1 {
     interface $VRRP_INTERFACE
     virtual_router_id $VRRP_ID
     priority $VRRP_PRIORITY
+	nopreempt
     advert_int 1
     virtual_ipaddress {
         $VRRP_IPADDRESS/$VRRP_IPADDRESS_LEN

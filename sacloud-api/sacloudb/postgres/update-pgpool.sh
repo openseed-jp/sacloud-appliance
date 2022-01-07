@@ -12,6 +12,11 @@ SERVER_LOCAL_IP=$SERVER_LOCALIP
 SERVER_PEER_IP=$SERVER_PEER_LOCALIP
 SERVER_VIRTUAL_IP=$SERVER_VIP
 
+if [ "$SERVER1_LOCALIP" == "$SERVER_LOCALIP" ]; then
+    WD_PRIORITY=100
+else
+    WD_PRIORITY=50
+fi
 
 : =====================================================
 :  modify /var/lib/pgsql/.ssh : $0:$LINENO
@@ -34,6 +39,8 @@ sacloud_func_file_cleanup /etc/pgpool-II/pgpool.conf
 cp /etc/pgpool-II/pgpool.conf.sample-stream /etc/pgpool-II/pgpool.conf
 
 
+SERVER_NETWORK_LEN=$(jq -r .Interfaces[1].Switch.UserSubnet.NetworkMaskLen $SACLOUDAPI_HOME/conf/interfaces.json)
+
 cat <<_EOL >> /etc/pgpool-II/pgpool.conf
 # sacloud
 listen_addresses '*'
@@ -45,22 +52,28 @@ allow_clear_text_frontend_auth = on
 enable_pool_hba = 'off'
 pool_passwd = 'pool_passwd'
 
+if_up_cmd = '/usr/bin/sudo /sbin/ip addr add $SERVER_VIRTUAL_IP/$SERVER_NETWORK_LEN dev eth1'
+if_down_cmd = '/usr/bin/sudo /sbin/ip addr del $SERVER_VIRTUAL_IP/$SERVER_NETWORK_LEN dev eth1'
+arping_cmd = '/usr/bin/sudo /usr/sbin/arping -U $_IP_$ -w 1 -I eth1'
 
-## watch dog
-use_watchdog = on
-trusted_servers = 'db-${APPLIANCE_ID},db-${APPLIANCE_ID}-01,db-${APPLIANCE_ID}-02'
+### watch dog
+#use_watchdog = off
+#trusted_servers = 'db-${APPLIANCE_ID}-01,db-${APPLIANCE_ID}-02'
 #delegate_IP = '$SERVER_VIRTUAL_IP'
 
 wd_lifecheck_method = 'query'
 wd_lifecheck_user = '$SACLOUDB_ADMIN_USER'
 wd_lifecheck_password = '$SACLOUDB_ADMIN_PASS'
 wd_hostname = '$SERVER_LOCAL_IP'
+wd_priority = $WD_PRIORITY
 wd_port = 9000
 wd_interval = 3
 wd_ipc_socket_dir = '/var/run/pgpool'
 other_pgpool_hostname0 = '$SERVER_PEER_IP'
 other_pgpool_port0 = 9999
 other_wd_port0 = 9000
+
+enable_consensus_with_half_votes = on
 
 # pgpool
 health_check_user = '$SACLOUDB_ADMIN_USER'
@@ -75,20 +88,20 @@ follow_master_command = '/etc/pgpool-II/follow_master.sh %d %h %p %D %m %H %M %P
 failover_command = '/etc/pgpool-II/failover.sh %d %h %p %D %m %H %M %P %r %R %N %S'
 failback_command = '/etc/pgpool-II/failback.sh %d %h %p %D %m %H %M %P %r %R %N %S'
 auto_failback = on
-auto_failback_interval = 60
+auto_failback_interval = 120
 
 socket_dir = '/var/run/postgresql'
 pcp_socket_dir = '/var/run/postgresql'
 wd_ipc_socket_dir = '/var/run/postgresql'
 
-backend_hostname0 = '$SERVER_PRIMARY_IP'
+backend_hostname0 = 'db-${APPLIANCE_ID}-01'
 backend_application_name0 = 'db_${APPLIANCE_ID}_01'
 backend_port0 = $PGPORT
 backend_weight0 = 1
 backend_data_directory0 = '$PGDATA'
 backend_flag0 = 'ALLOW_TO_FAILOVER'
 
-backend_hostname1 = '$SERVER_BACKUP_IP'
+backend_hostname1 = 'db-${APPLIANCE_ID}-02'
 backend_application_name1 = 'db_${APPLIANCE_ID}_02'
 backend_port1 = $PGPORT
 backend_weight1 = 1
@@ -99,82 +112,22 @@ ssl = on
 ssl_key = '/etc/pki/tls/private/postgres.key'
 ssl_cert = '/etc/pki/tls/certs/postgres.crt'
 
+
+# num_init_children = 5
+
+
 # /sacloud
 _EOL
 
-cat /etc/pgpool-II/failover.sh.sample \
-	| sed -e "s|^PGHOME=.*$|PGHOME=$PGHOME|" \
-	> /etc/pgpool-II/failover.sh
-
-cat /etc/pgpool-II/follow_master.sh.sample \
-	| sed -e "s|^PGHOME=.*$|PGHOME=$PGHOME|" \
-	| sed -e "s/^REPLUSER=.*/REPLUSER=$SACLOUDB_ADMIN_USER/" \
-	| sed -e "s/^PCP_USER=.*/PCP_USER=$SACLOUDB_ADMIN_USER/" \
-	> /etc/pgpool-II/follow_master.sh	
-
-cat <<__EOF >/etc/pgpool-II/failback.sh
-#!/bin/bash
-# This script is run by failback_command.
-
-set -o xtrace
-exec > >(logger -i -p local1.info) 2>&1
-
-# Special values:
-#   %d = failed node id
-#   %h = failed node hostname
-#   %p = failed node port number
-#   %D = failed node database cluster path
-#   %m = new master node id
-#   %H = new master node hostname
-#   %M = old master node id
-#   %P = old primary node id
-#   %r = new master port number
-#   %R = new master database cluster path
-#   %N = old primary node hostname
-#   %S = old primary node port number
-#   %% = '%' character
-
-FAILED_NODE_ID="$1"
-FAILED_NODE_HOST="$2"
-FAILED_NODE_PORT="$3"
-FAILED_NODE_PGDATA="$4"
-NEW_MASTER_NODE_ID="$5"
-NEW_MASTER_NODE_HOST="$6"
-OLD_MASTER_NODE_ID="$7"
-OLD_PRIMARY_NODE_ID="$8"
-NEW_MASTER_NODE_PORT="$9"
-NEW_MASTER_NODE_PGDATA="${10}"
-OLD_PRIMARY_NODE_HOST="${11}"
-OLD_PRIMARY_NODE_PORT="${12}"
-
-PGHOME=/usr/pgsql-13
-
-#LOGDIR=/var/log/pgpool-II-13
-cat <<_EOL >> $LOGDIR/pgpool2-commands.log
-$(date) $(hostname) $0 $1 $5 $7 $8
-_EOL
-
-cat <<_EOL > $LOGDIR/failback-$(hostname).log
-FAILED_NODE_ID="$1"
-FAILED_NODE_HOST="$2"
-FAILED_NODE_PORT="$3"
-FAILED_NODE_PGDATA="$4"
-NEW_MASTER_NODE_ID="$5"
-NEW_MASTER_NODE_HOST="$6"
-OLD_MASTER_NODE_ID="$7"
-OLD_PRIMARY_NODE_ID="$8"
-NEW_MASTER_NODE_PORT="$9"
-NEW_MASTER_NODE_PGDATA="${10}"
-OLD_PRIMARY_NODE_HOST="${11}"
-OLD_PRIMARY_NODE_PORT="${12}"
-
-FAILED_SLOT_NAME=${FAILED_SLOT_NAME}
-_EOL
-
-exit 0
-__EOF
-
-
+cp -f $SACLOUDB_MODULE_BASE/$SACLOUDB_DATABASE_NAME/pgpool-II/*.sh /etc/pgpool-II/.
+sed -i /etc/pgpool-II/failover.sh \
+    -e "s|^PGHOME=.*$|PGHOME=$PGHOME|" 
+sed -i /etc/pgpool-II/follow_master.sh \
+	-e "s|^PGHOME=.*$|PGHOME=$PGHOME|" \
+	-e "s/^REPLUSER=.*/REPLUSER=$SACLOUDB_ADMIN_USER/" \
+	-e "s/^PCP_USER=.*/PCP_USER=$SACLOUDB_ADMIN_USER/"
+sed -i /etc/pgpool-II/failback.sh \
+    -e "s|^PGHOME=.*$|PGHOME=$PGHOME|" 
 
 touch /etc/pgpool-II/{failover.log,follow_master.log}
 chmod 666 /etc/pgpool-II/{failover.log,follow_master.log}
@@ -187,6 +140,7 @@ chmod +x /etc/pgpool-II/*.sh
 cat <<_EOL > /root/.pcppass
 #hostname:port:username:password
 localhost:9898:$SACLOUDB_ADMIN_USER:$SACLOUDB_ADMIN_PASS
+localhost:9898:$SACLOUDB_DEFAULT_USER:$SACLOUDB_DEFAULT_PASS
 $SERVER_PRIMARY_IP:9898:$SACLOUDB_ADMIN_USER:$SACLOUDB_ADMIN_PASS
 $SERVER_BACKUP_IP:9898:$SACLOUDB_ADMIN_USER:$SACLOUDB_ADMIN_PASS
 db-$APPLIANCE_ID-01:9898:$SACLOUDB_ADMIN_USER:$SACLOUDB_ADMIN_PASS
@@ -246,7 +200,12 @@ apachectl restart
 
 sacloud_func_file_cleanup /etc/pgpool-II/pcp.conf
 php -r "echo '"$SACLOUD_ADMIN_USER":'.md5('"$SACLOUD_ADMIN_PASS"'),PHP_EOL;" >> /etc/pgpool-II/pcp.conf
+php -r "echo '"$SACLOUDB_DEFAULT_USER":'.md5('"$SACLOUDB_DEFAULT_PASS"'),PHP_EOL;" >> /etc/pgpool-II/pcp.conf
 
+
+# pgpool からの参照が必要
+cp -f  /root/.pcppass /var/lib/pgsql/.
+chown -R postgres:postgres /var/lib/pgsql
 
 # apache からの参照権限が必要
 # /usr/pgpoolAdmin-4.1.0/conf にコピーしてもいいのかな
@@ -261,7 +220,7 @@ VRRP_STATE=backup
 VRRP_PRIORITY=100
 VRRP_INTERFACE=eth1
 VRRP_IPADDRESS=$(jq -r .Interfaces[1].VirtualIPAddress $SACLOUDAPI_HOME/conf/interfaces.json)
-VRRP_IPADDRESS_LEN=24
+VRRP_IPADDRESS_LEN=$(jq -r .Interfaces[1].Switch.UserSubnet.NetworkMaskLen $SACLOUDAPI_HOME/conf/interfaces.json)
 VRRP_ID=$(echo $VRRP_IPADDRESS | cut -d. -f4)
 
 cat > /etc/keepalived/keepalived.conf <<_EOL
@@ -282,6 +241,7 @@ vrrp_instance VI_1 {
     interface $VRRP_INTERFACE
     virtual_router_id $VRRP_ID
     priority $VRRP_PRIORITY
+    nopreempt
     advert_int 1
     virtual_ipaddress {
         $VRRP_IPADDRESS/$VRRP_IPADDRESS_LEN
@@ -301,6 +261,7 @@ cat <<_EOF > /var/www/html/index.html
 <html>
 <body>
 <ul>
+<li>HostName: $(hostname)</li>
 <li><a href="/pgadmin4/">pgAdmin 4 (v5.3)</a>(ID: ${SACLOUDB_DEFAULT_USER}@localhost, PW: [default password]</li>
 <li><a href="/pgpooladmin/">pgpool Administration Tool Version 4.1.0</a></li>
 </ul>

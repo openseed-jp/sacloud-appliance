@@ -16,12 +16,13 @@ if [ ! "$VRRP_STATUS" = "MASTER" ]; then
 fi
 
 # まず、冗長化 が維持されているか確認
-if ! ssh root@db-$APPLIANCE_ID-$SERVER_PEER_IDX systemctl status mariadb ; then
+if ! ssh root@db-$APPLIANCE_ID-$SERVER_PEER_IDX pg_ctl status ; then
     exit 1
 fi
 
 sleep 10
+# 冗長化 が維持されているか確認
 
-if ! systemctl restart mariadb; then
+if ! pg_ctl restart; then
     exit 1
 fi

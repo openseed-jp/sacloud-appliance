@@ -37,9 +37,6 @@ with open("/root/.sacloud-api/conf/interfaces.json", "r") as read_file:
 			if (i == 0):
 				data += ["GATEWAY=" + gateway]
 				data += ["DNS1=" + dns[0], "DNS2=" + dns[1]]
-			else:
-			  with open(route, mode='w') as fh:
-			    fh.write((" via " + gateway + "\n").join(["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", ""]))
 
 			# override network-scripts config
 			with open(file, mode='w') as fh:
@@ -55,6 +52,18 @@ with open("/root/.sacloud-api/conf/interfaces.json", "r") as read_file:
 		i = i + 1
 _EOF
 
-if [ -f $(dirname $0)/update-interfaces-ext.sh ]; then
-  $(dirname $0)/update-interfaces-ext.sh
+
+# ローカルネットワークチェック
+SERVER_LOCALIP=$(jq -r .Interfaces[1].UserIPAddress /root/.sacloud-api/conf/interfaces.json)
+until
+	/usr/sbin/arping -U $SERVER_LOCALIP -w 1 -I eth1 || /usr/sbin/ifup eth1
+do
+	: ネットワークが起動できない
+	sleep 1;
+done
+
+
+./update-interface-route.sh
+if [ -f ./update-interfaces-ext.sh ]; then
+  ./update-interfaces-ext.sh
 fi
